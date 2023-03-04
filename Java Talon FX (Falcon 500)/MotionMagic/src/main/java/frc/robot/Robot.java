@@ -70,7 +70,7 @@ import frc.robot.sim.PhysicsSim;
 
 public class Robot extends TimedRobot {
 	/* Hardware */
-	WPI_TalonFX _talon = new WPI_TalonFX(1, "rio"); // Rename "rio" to match the CANivore device name if using a CANivore
+	WPI_TalonFX _talon = new WPI_TalonFX(5, "canbus1"); // Rename "rio" to match the CANivore device name if using a CANivore
 	Joystick _joy = new Joystick(0);
 
 	/* Used to build string throughout loop */
