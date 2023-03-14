@@ -48,11 +48,16 @@
  */
 package frc.robot;
 
+import com.ctre.phoenix.motorcontrol.FeedbackDevice;
+import com.ctre.phoenix.motorcontrol.RemoteSensorSource;
 import com.ctre.phoenix.motorcontrol.TalonFXControlMode;
 import com.ctre.phoenix.motorcontrol.TalonFXFeedbackDevice;
 import com.ctre.phoenix.motorcontrol.TalonFXInvertType;
 import com.ctre.phoenix.motorcontrol.can.TalonFXConfiguration;
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonFX;
+import com.ctre.phoenix.sensors.Pigeon2;
+import com.ctre.phoenix.sensors.Pigeon2Configuration;
+import com.ctre.phoenix.sensors.PigeonIMU_StatusFrame;
 import com.ctre.phoenix.motion.*;
 
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
@@ -90,6 +95,8 @@ public class Robot extends TimedRobot {
     /** a master talon, add followers if need be. */
     WPI_TalonFX _master = new WPI_TalonFX(19, "canbus1");
 
+    Pigeon2 pigeon;
+
     /** gamepad for control */
     Joystick _joy = new Joystick(0);
 
@@ -110,6 +117,16 @@ public class Robot extends TimedRobot {
     }
 
     public void robotInit() {
+
+        /* create and configure the Pigeon */
+    this.pigeon = new Pigeon2(PIGEON_ID, "canbus1");
+    Pigeon2Configuration config = new Pigeon2Configuration();
+    // set mount pose as rolled 90 degrees clockwise
+    config.MountPoseYaw = 0;
+    config.MountPoseRoll = -90.0;
+    this.pigeon.configAllSettings(config);
+    this.pigeon.setStatusFramePeriod(PigeonIMU_StatusFrame.CondStatus_9_SixDeg_YPR, 9);
+
         /* fill our buffer object with the excel points */
         initBuffer(0, 20);
 
@@ -122,10 +139,18 @@ public class Robot extends TimedRobot {
         _config.slot0.kD = Constants.kGains_MotProf.kD;
         _config.slot0.integralZone = (int) Constants.kGains_MotProf.kIzone;
         _config.slot0.closedLoopPeakOutput = Constants.kGains_MotProf.kPeakOutput;
+
+        _config.remoteFilter0.remoteSensorDeviceID = PIGEON_ID;
+        _config.remoteFilter0.remoteSensorSource = RemoteSensorSource.Pigeon_Pitch;
+
+
         // _config.slot0.allowableClosedloopError // left default for this example
         // _config.slot0.maxIntegralAccumulator; // left default for this example
         // _config.slot0.closedLoopPeriod; // left default for this example
         _master.configAllSettings(_config);
+
+        _master.configSelectedFeedbackSensor(FeedbackDevice.RemoteSensor0);
+        _master.setSensorPhase(true);
 
         /* pick the sensor phase and desired direction */
         _master.setInverted(TalonFXInvertType.CounterClockwise);

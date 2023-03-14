@@ -33,5 +33,7 @@ public class Constants {
   public static final double ROTATION_GEAR_RATIO = 20;
   public static final double ROTATION_DRUM_CIRCUMFERENCE = Units.inchesToMeters(2.0) * Math.PI;
 
+  public static final int PIGEON_ID = 4;
+
   
 }
