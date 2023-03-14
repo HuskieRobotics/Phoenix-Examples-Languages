@@ -209,7 +209,7 @@ public class Robot extends TimedRobot {
         TrapezoidProfile profile = new TrapezoidProfile(
                 constraints,
                 new State(
-                        0,
+                        rotation,
                         0),
                 new State(_master.getSelectedSensorPosition(Constants.kPrimaryPIDSlot), 0));
 
