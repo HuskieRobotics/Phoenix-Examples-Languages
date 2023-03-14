@@ -63,6 +63,7 @@ import com.ctre.phoenix.motion.*;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.math.trajectory.TrapezoidProfile.Constraints;
 import edu.wpi.first.math.trajectory.TrapezoidProfile.State;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
 
@@ -75,14 +76,14 @@ public class Robot extends TimedRobot {
     private static final int LOOP_DT_MS = 10;
 
     private final TunableNumber rotationMotionProfileAcceleration = new TunableNumber(
-            "ElevatorRotation/MPAcceleration",
-            ROTATION_ELEVATOR_ACCELERATION_METERS_PER_SECOND_PER_SECOND);
+            "ElevatorRotation/MPAcceleration(deg/sec/sec)",
+            ROTATION_ELEVATOR_ACCELERATION_DEGREES_PER_SECOND_PER_SECOND);
     private final TunableNumber rotationMotionProfileExtensionCruiseVelocity = new TunableNumber(
-            "ElevatorRotation/MPExtensionVelocity",
-            ROTATION_MAX_ELEVATOR_EXTENSION_VELOCITY_METERS_PER_SECOND);
+            "ElevatorRotation/MPExtensionVelocity(deg/s)",
+            ROTATION_MAX_ELEVATOR_EXTENSION_VELOCITY_DEGREES_PER_SECOND);
     private final TunableNumber rotationMotionProfileRetractionCruiseVelocity = new TunableNumber(
-            "ElevatorRotation/MPRetractionVelocity",
-            ROTATION_MAX_ELEVATOR_RETRACTION_VELOCITY_METERS_PER_SECOND);
+            "ElevatorRotation/MPRetractionVelocity(deg/s)",
+            ROTATION_MAX_ELEVATOR_RETRACTION_VELOCITY_DEGREES_PER_SECOND);
 
     private final TunableNumber rotationSetpoint = new TunableNumber(
             "ElevatorRotation/Setpoint(deg)",
@@ -128,10 +129,10 @@ public class Robot extends TimedRobot {
     this.pigeon.setStatusFramePeriod(PigeonIMU_StatusFrame.CondStatus_9_SixDeg_YPR, 9);
 
         /* fill our buffer object with the excel points */
-        initBuffer(0, 20);
+        //initBuffer(0, 20);
 
         /* _config the master specific settings */
-        _config.primaryPID.selectedFeedbackSensor = TalonFXFeedbackDevice.IntegratedSensor.toFeedbackDevice();
+        //_config.primaryPID.selectedFeedbackSensor = TalonFXFeedbackDevice.IntegratedSensor.toFeedbackDevice();
         _config.neutralDeadband = Constants.kNeutralDeadband; /* 0.1 % super small for best low-speed control */
         _config.slot0.kF = Constants.kGains_MotProf.kF;
         _config.slot0.kP = Constants.kGains_MotProf.kP;
@@ -187,6 +188,7 @@ public class Robot extends TimedRobot {
 
             /* fire the MP, and stop calling set() since that will cancel the MP */
             case 1:
+                initBuffer(0, rotationSetpoint.get());
                 /* wait for 10 points to buffer in firmware, then transition to MP */
                 _master.startMotionProfile(_bufferedStream, 10, TalonFXControlMode.MotionProfile.toControlMode());
                 _state = 2;
@@ -223,18 +225,12 @@ public class Robot extends TimedRobot {
          * the arm matches this trajectory
          */
         Constraints constraints = new Constraints(
-                mpsToFalconMotionMagicUnits(
-                        rotationMotionProfileExtensionCruiseVelocity.get(),
-                        ROTATION_DRUM_CIRCUMFERENCE,
-                        ROTATION_GEAR_RATIO),
-                mpsToFalconMotionMagicUnits(
-                        rotationMotionProfileAcceleration.get(),
-                        ROTATION_DRUM_CIRCUMFERENCE,
-                        ROTATION_GEAR_RATIO));
+                radiansToPigeon(Units.degreesToRadians(rotationMotionProfileExtensionCruiseVelocity.get())),
+                radiansToPigeon(Units.degreesToRadians(rotationMotionProfileAcceleration.get())));
         TrapezoidProfile profile = new TrapezoidProfile(
                 constraints,
                 new State(
-                        0,
+                        radiansToPigeon(Units.degreesToRadians(rotation)),
                         0),
                 new State(_master.getSelectedSensorPosition(Constants.kPrimaryPIDSlot), 0));
 
@@ -272,4 +268,13 @@ public class Robot extends TimedRobot {
         double ticksPerSecond = motorRotationsPerSecond * 2048.0;
         return ticksPerSecond / 10.0; // per 100 ms
     }
+
+    private double pigeonToRadians(double counts) {
+        return counts / PIGEON_UNITS_PER_ROTATION * (2 * Math.PI);
+      }
+    
+      private double radiansToPigeon(double radians) {
+        return radians / (2 * Math.PI) * PIGEON_UNITS_PER_ROTATION;
+      }
+    
 }

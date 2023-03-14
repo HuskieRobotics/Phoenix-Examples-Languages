@@ -26,14 +26,15 @@ public class Constants {
 
 	public final static boolean TUNING_MODE = true;
 
-	public static final double ROTATION_MAX_ELEVATOR_EXTENSION_VELOCITY_METERS_PER_SECOND = 0.5;
-  public static final double ROTATION_MAX_ELEVATOR_RETRACTION_VELOCITY_METERS_PER_SECOND = 0.5;
-  public static final double ROTATION_ELEVATOR_ACCELERATION_METERS_PER_SECOND_PER_SECOND = 1.0;
+	public static final double ROTATION_MAX_ELEVATOR_EXTENSION_VELOCITY_DEGREES_PER_SECOND = 20;
+  public static final double ROTATION_MAX_ELEVATOR_RETRACTION_VELOCITY_DEGREES_PER_SECOND = 20;
+  public static final double ROTATION_ELEVATOR_ACCELERATION_DEGREES_PER_SECOND_PER_SECOND = 20;
 
   public static final double ROTATION_GEAR_RATIO = 20;
   public static final double ROTATION_DRUM_CIRCUMFERENCE = Units.inchesToMeters(2.0) * Math.PI;
 
   public static final int PIGEON_ID = 4;
+  public static final int PIGEON_UNITS_PER_ROTATION = 8192;
 
   
 }
