@@ -54,12 +54,36 @@ import com.ctre.phoenix.motorcontrol.TalonFXInvertType;
 import com.ctre.phoenix.motorcontrol.can.TalonFXConfiguration;
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonFX;
 import com.ctre.phoenix.motion.*;
+
+import static frc.robot.Constants.*;
+
+import edu.wpi.first.math.trajectory.TrapezoidProfile;
+import edu.wpi.first.math.trajectory.TrapezoidProfile.Constraints;
+import edu.wpi.first.math.trajectory.TrapezoidProfile.State;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
 
 import frc.robot.sim.PhysicsSim;
+import frc.robot.Conversions;
 
 public class Robot extends TimedRobot {
+
+    private static final int LOOP_DT_MS = 10;
+
+    private final TunableNumber extensionMotionProfileAcceleration = new TunableNumber(
+            "ElevatorExtension/MPAcceleration",
+            EXTENSION_ELEVATOR_ACCELERATION_METERS_PER_SECOND_PER_SECOND);
+    private final TunableNumber extensionMotionProfileExtensionCruiseVelocity = new TunableNumber(
+            "ElevatorExtension/MPExtensionVelocity",
+            EXTENSION_MAX_ELEVATOR_EXTENSION_VELOCITY_METERS_PER_SECOND);
+    private final TunableNumber extensionMotionProfileRetractionCruiseVelocity = new TunableNumber(
+            "ElevatorExtension/MPRetractionVelocity",
+            EXTENSION_MAX_ELEVATOR_RETRACTION_VELOCITY_METERS_PER_SECOND);
+
+    private final TunableNumber extensionSetpoint = new TunableNumber(
+            "ElevatorExtension/Setpoint(in)",
+            44);
 
     /** very simple state machine to prevent calling set() while firing MP. */
     int _state = 0;
@@ -75,21 +99,19 @@ public class Robot extends TimedRobot {
 
     /* talon configs */
     TalonFXConfiguration _config = new TalonFXConfiguration(); // factory default settings
-    
+
     /* quick and dirty plotter to smartdash */
     PlotThread _plotThread = new PlotThread(_master);
 
     public void simulationInit() {
         PhysicsSim.getInstance().addTalonFX(_master, 0.5, 6800);
     }
+
     public void simulationPeriodic() {
         PhysicsSim.getInstance().run();
     }
 
     public void robotInit() {
-        /* fill our buffer object with the excel points */
-        initBuffer(MotionProfile.Points, MotionProfile.kNumPoints);
-
         /* _config the master specific settings */
         _config.primaryPID.selectedFeedbackSensor = TalonFXFeedbackDevice.IntegratedSensor.toFeedbackDevice();
         _config.neutralDeadband = Constants.kNeutralDeadband; /* 0.1 % super small for best low-speed control */
@@ -106,13 +128,15 @@ public class Robot extends TimedRobot {
 
         /* pick the sensor phase and desired direction */
         _master.setInverted(TalonFXInvertType.CounterClockwise);
-		/*
-		 * Talon FX does not need sensor phase set for its integrated sensor
-		 * This is because it will always be correct if the selected feedback device is integrated sensor (default value)
-		 * and the user calls getSelectedSensor* to get the sensor's position/velocity.
-		 * 
-		 * https://phoenix-documentation.readthedocs.io/en/latest/ch14_MCSensor.html#sensor-phase
-		 */
+        /*
+         * Talon FX does not need sensor phase set for its integrated sensor
+         * This is because it will always be correct if the selected feedback device is
+         * integrated sensor (default value)
+         * and the user calls getSelectedSensor* to get the sensor's position/velocity.
+         * 
+         * https://phoenix-documentation.readthedocs.io/en/latest/ch14_MCSensor.html#
+         * sensor-phase
+         */
         // _master.setSensorPhase(true);
     }
 
@@ -139,6 +163,9 @@ public class Robot extends TimedRobot {
 
             /* fire the MP, and stop calling set() since that will cancel the MP */
             case 1:
+                /* fill our buffer object with the excel points */
+                initBuffer(Units.inchesToMeters(extensionSetpoint.get()), 0.0);
+
                 /* wait for 10 points to buffer in firmware, then transition to MP */
                 _master.startMotionProfile(_bufferedStream, 10, TalonFXControlMode.MotionProfile.toControlMode());
                 _state = 2;
@@ -162,46 +189,67 @@ public class Robot extends TimedRobot {
         Instrum.loop(bPrintValues, _master);
     }
 
-    /**
-     * Fill _bufferedStream with points from csv/generated-table.
-     *
-     * @param profile  generated array from excel
-     * @param totalCnt num points in profile
-     */
-    private void initBuffer(double[][] profile, int totalCnt) {
+    public void initBuffer(double extension, double rotation) {
+        // public static BufferedTrajectoryPointStream generateTrajectory(double
+        // theta_0, double
+        // theta_f, Constraints constraints) { //TODO: consider generating motion
+        // profiles for the
+        // elevator and the arm together, that way the kG feedforward can be perfect
+        /*
+         * Trapezoidal profile for the angle of the arm as a function of time. The motor
+         * profile is generated using
+         * calculateMotorPosition() and calculateMotorVelocity such that the motion of
+         * the arm matches this trajectory
+         */
+        Constraints constraints = new Constraints(
+                mpsToFalconMotionMagicUnits(
+                        extensionMotionProfileExtensionCruiseVelocity.get(),
+                        EXTENSION_PULLEY_CIRCUMFERENCE,
+                        EXTENSION_GEAR_RATIO),
+                mpsToFalconMotionMagicUnits(
+                        extensionMotionProfileAcceleration.get(),
+                        EXTENSION_PULLEY_CIRCUMFERENCE,
+                        EXTENSION_GEAR_RATIO));
+        TrapezoidProfile profile = new TrapezoidProfile(
+                constraints,
+                new State(
+                        Conversions.metersToFalcon(
+                                extension, EXTENSION_PULLEY_CIRCUMFERENCE, EXTENSION_GEAR_RATIO),
+                        0),
+                new State(_master.getSelectedSensorPosition(Constants.kPrimaryPIDSlot), 0));
 
-        boolean forward = true; // set to false to drive in opposite direction of profile (not really needed
-                                // since you can use negative numbers in profile).
-
-        TrajectoryPoint point = new TrajectoryPoint(); // temp for for loop, since unused params are initialized
-                                                       // automatically, you can alloc just one
+        // based on
+        // https://v5.docs.ctr-electronics.com/en/stable/ch16_ClosedLoop.html#motion-profiling-closed-loop
+        BufferedTrajectoryPointStream stream = new BufferedTrajectoryPointStream();
+        TrajectoryPoint point = new TrajectoryPoint();
 
         /* clear the buffer, in case it was used elsewhere */
         _bufferedStream.Clear();
 
-        /* Insert every point into buffer, no limit on size */
-        for (int i = 0; i < totalCnt; ++i) {
+        for (double t = 0; !profile.isFinished(t - LOOP_DT_MS / 1000.0); t += LOOP_DT_MS / 1000.0) {
+            double extensionPosition = profile.calculate(t).position;
+            double extensionVelocity = profile.calculate(t).velocity;
 
-            double direction = forward ? +1 : -1;
-            double positionRot = profile[i][0];
-            double velocityRPM = profile[i][1];
-            int durationMilliseconds = (int) profile[i][2];
-
-            /* for each point, fill our structure and pass it to API */
-            point.timeDur = durationMilliseconds;
-            point.position = direction * positionRot * Constants.kSensorUnitsPerRotation; // Convert Revolutions to
-                                                                                          // Units
-            point.velocity = direction * velocityRPM * Constants.kSensorUnitsPerRotation / 600.0; // Convert RPM to
-                                                                                                  // Units/100ms
+            point.timeDur = LOOP_DT_MS;
+            point.position = extensionPosition;
+            point.velocity = extensionVelocity;
             point.auxiliaryPos = 0;
             point.auxiliaryVel = 0;
             point.profileSlotSelect0 = Constants.kPrimaryPIDSlot; /* which set of gains would you like to use [0,3]? */
             point.profileSlotSelect1 = 0; /* auxiliary PID [0,1], leave zero */
-            point.zeroPos = (i == 0); /* set this to true on the first point */
-            point.isLastPoint = ((i + 1) == totalCnt); /* set this to true on the last point */
-            point.arbFeedFwd = 0; /* you can add a constant offset to add to PID[0] output here */
+            point.zeroPos = (t == 0); /* set this to true on the first point */
+            point.isLastPoint = profile.isFinished(t); /* set this to true on the last point */
+            point.arbFeedFwd = 0; // calculatekG(theta_arm); //apply kG as an arbitrary feedforward
 
             _bufferedStream.Write(point);
         }
+    }
+
+    private static double mpsToFalconMotionMagicUnits(
+            double mps, double circumference, double gearRatio) {
+        double pulleyRotationsPerSecond = mps / circumference;
+        double motorRotationsPerSecond = pulleyRotationsPerSecond * gearRatio;
+        double ticksPerSecond = motorRotationsPerSecond * 2048.0;
+        return ticksPerSecond / 10.0; // per 100 ms
     }
 }
