@@ -17,7 +17,8 @@ public class Constants {
 	/**
 	 * PID Gains may have to be adjusted based on the responsiveness of control loop
 	 * 	                                    			  kP   kI    kD     kF             Iz    PeakOut */
-	public final static Gains kGains_MotProf = new Gains( 0.3, 0.0,  0.0, 0.07,  400,  1.00 ); /* measured 6800 velocity units at full motor output */
+	// FIXME: !!! find kF for the rotation
+	public final static Gains kGains_MotProf = new Gains( 3.25, 0.01,  0.0, 0.07,  400,  0.5 ); /* measured 6800 velocity units at full motor output */
 	
 	public final static int kPrimaryPIDSlot = 0; // any slot [0,3]
 }

@@ -59,13 +59,15 @@ import edu.wpi.first.wpilibj.TimedRobot;
 
 import frc.robot.sim.PhysicsSim;
 
+import static frc.robot.Constants.*;
+
 public class Robot extends TimedRobot {
 
     /** very simple state machine to prevent calling set() while firing MP. */
     int _state = 0;
 
     /** a master talon, add followers if need be. */
-    WPI_TalonFX _master = new WPI_TalonFX(5, "canbus1");
+    WPI_TalonFX _master = new WPI_TalonFX(19, "canbus1");
 
     /** gamepad for control */
     Joystick _joy = new Joystick(0);
