@@ -286,7 +286,7 @@ public class Robot extends TimedRobot {
             point.profileSlotSelect1 = 0; /* auxiliary PID [0,1], leave zero */
             point.zeroPos = (t == 0); /* set this to true on the first point */
             point.isLastPoint = profile.isFinished(t); /* set this to true on the last point */
-            point.arbFeedFwd = calculateRotationFeedForward(extension, Units.degreesToRadians(rotation));
+            point.arbFeedFwd = calculateRotationFeedForward(extension, pigeonToRadians(rotationPosition));
 
             rotationBufferedStream.Write(point);
         }
@@ -341,7 +341,9 @@ public class Robot extends TimedRobot {
             point.profileSlotSelect1 = 0; /* auxiliary PID [0,1], leave zero */
             point.zeroPos = (t == 0); /* set this to true on the first point */
             point.isLastPoint = profile.isFinished(t); /* set this to true on the last point */
-            point.arbFeedFwd = calculateExtensionFeedForward(extension, Units.degreesToRadians(rotation));
+            point.arbFeedFwd = calculateExtensionFeedForward(Units.metersToInches(Conversions
+                    .falconToMeters(extensionPosition, EXTENSION_PULLEY_CIRCUMFERENCE, EXTENSION_GEAR_RATIO)),
+                    Units.degreesToRadians(rotation));
 
             extensionBufferedStream.Write(point);
         }
