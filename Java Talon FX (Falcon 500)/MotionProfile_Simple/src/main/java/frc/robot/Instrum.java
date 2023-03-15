@@ -16,7 +16,7 @@ public class Instrum {
 		System.out.println(s);
 	}
 
-	public static void loop(boolean bPrintValues, TalonFX talon) {
+	public static void loop(boolean bPrintValues, TalonFX rotationTalon, TalonFX extensionTalon) {
 		if (!_bPrintValues && bPrintValues) {
 			/* user just pressed button, immediete print */
 			_loops = 999;
@@ -34,9 +34,23 @@ public class Instrum {
 			_loops = 0;
 			/* get status info */
 			MotionProfileStatus status = new MotionProfileStatus();
-			talon.getMotionProfileStatus(status);
+			rotationTalon.getMotionProfileStatus(status);
 
 			String line = "";
+			line += "  topBufferRem: " + status.topBufferRem + "\n";
+			line += "  topBufferCnt: " + status.topBufferCnt + "\n";
+			line += "  btmBufferCnt: " + status.btmBufferCnt + "\n";
+			line += "  hasUnderrun: " + status.hasUnderrun + "\n";
+			line += "  isUnderrun: " + status.isUnderrun + "\n";
+			line += "  activePointValid: " + status.activePointValid + "\n";
+			line += "  isLast: " + status.isLast + "\n";
+			line += "  profileSlotSelect0: " + status.profileSlotSelect + "\n";
+			line += "  profileSlotSelect1: " + status.profileSlotSelect1 + "\n";
+			line += "  outputEnable: " + status.outputEnable.toString() + "\n";
+			line += "  timeDurMs: " + status.timeDurMs + "\n";
+
+			extensionTalon.getMotionProfileStatus(status);
+
 			line += "  topBufferRem: " + status.topBufferRem + "\n";
 			line += "  topBufferCnt: " + status.topBufferCnt + "\n";
 			line += "  btmBufferCnt: " + status.btmBufferCnt + "\n";

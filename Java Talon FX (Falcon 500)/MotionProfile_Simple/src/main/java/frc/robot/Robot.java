@@ -85,16 +85,33 @@ public class Robot extends TimedRobot {
             "ElevatorRotation/MPRetractionVelocity(deg/s)",
             ROTATION_MAX_ELEVATOR_RETRACTION_VELOCITY_DEGREES_PER_SECOND);
 
+            private final TunableNumber extensionMotionProfileAcceleration = new TunableNumber(
+            "ElevatorExtension/MPAcceleration(m/s/s)",
+            EXTENSION_ELEVATOR_ACCELERATION_METERS_PER_SECOND_PER_SECOND);
+    private final TunableNumber extensionMotionProfileExtensionCruiseVelocity = new TunableNumber(
+            "ElevatorExtension/MPExtensionVelocity(m/s)",
+            EXTENSION_MAX_ELEVATOR_EXTENSION_VELOCITY_METERS_PER_SECOND);
+    private final TunableNumber extensionMotionProfileRetractionCruiseVelocity = new TunableNumber(
+            "ElevatorExtension/MPRetractionVelocity(m/s)",
+            EXTENSION_MAX_ELEVATOR_RETRACTION_VELOCITY_METERS_PER_SECOND);
+
+    
+
     private final TunableNumber rotationSetpoint = new TunableNumber(
             "ElevatorRotation/Setpoint(deg)",
             45);
+
+            private final TunableNumber extensionSetpoint = new TunableNumber(
+            "ElevatorExtension/Setpoint(in)",
+            44);
 
 
     /** very simple state machine to prevent calling set() while firing MP. */
     int _state = 0;
 
     /** a master talon, add followers if need be. */
-    WPI_TalonFX _master = new WPI_TalonFX(19, "canbus1");
+    WPI_TalonFX rotationTalon = new WPI_TalonFX(19, "canbus1");
+    WPI_TalonFX extensionTalon = new WPI_TalonFX(5, "canbus1");
 
     Pigeon2 pigeon;
 
@@ -102,16 +119,18 @@ public class Robot extends TimedRobot {
     Joystick _joy = new Joystick(0);
 
     /** new class type in 2019 for holding MP buffer. */
-    BufferedTrajectoryPointStream _bufferedStream = new BufferedTrajectoryPointStream();
+    BufferedTrajectoryPointStream rotationBufferedStream = new BufferedTrajectoryPointStream();
+    BufferedTrajectoryPointStream extensionBufferedStream = new BufferedTrajectoryPointStream();
 
     /* talon configs */
-    TalonFXConfiguration _config = new TalonFXConfiguration(); // factory default settings
+    TalonFXConfiguration rotationConfig = new TalonFXConfiguration(); // factory default settings
+    TalonFXConfiguration extensionConfig = new TalonFXConfiguration(); // factory default settings
     
     /* quick and dirty plotter to smartdash */
-    PlotThread _plotThread = new PlotThread(_master);
+    PlotThread _plotThread = new PlotThread(rotationTalon, extensionTalon);
 
     public void simulationInit() {
-        PhysicsSim.getInstance().addTalonFX(_master, 0.5, 6800);
+        PhysicsSim.getInstance().addTalonFX(rotationTalon, 0.5, 6800);
     }
     public void simulationPeriodic() {
         PhysicsSim.getInstance().run();
@@ -131,45 +150,55 @@ public class Robot extends TimedRobot {
         /* fill our buffer object with the excel points */
         //initBuffer(0, 20);
 
-        /* _config the master specific settings */
-        //_config.primaryPID.selectedFeedbackSensor = TalonFXFeedbackDevice.IntegratedSensor.toFeedbackDevice();
-        _config.neutralDeadband = Constants.kNeutralDeadband; /* 0.1 % super small for best low-speed control */
-        _config.slot0.kF = Constants.kGains_MotProf.kF;
-        _config.slot0.kP = Constants.kGains_MotProf.kP;
-        _config.slot0.kI = Constants.kGains_MotProf.kI;
-        _config.slot0.kD = Constants.kGains_MotProf.kD;
-        _config.slot0.integralZone = (int) Constants.kGains_MotProf.kIzone;
-        _config.slot0.closedLoopPeakOutput = Constants.kGains_MotProf.kPeakOutput;
+        /* rotationConfig the master specific settings */
+        //rotationConfig.primaryPID.selectedFeedbackSensor = TalonFXFeedbackDevice.IntegratedSensor.toFeedbackDevice();
+        rotationConfig.neutralDeadband = Constants.kNeutralDeadband; /* 0.1 % super small for best low-speed control */
+        rotationConfig.slot0.kF = Constants.kRotationGains_MotProf.kF;
+        rotationConfig.slot0.kP = Constants.kRotationGains_MotProf.kP;
+        rotationConfig.slot0.kI = Constants.kRotationGains_MotProf.kI;
+        rotationConfig.slot0.kD = Constants.kRotationGains_MotProf.kD;
+        rotationConfig.slot0.integralZone = (int) Constants.kRotationGains_MotProf.kIzone;
+        rotationConfig.slot0.closedLoopPeakOutput = Constants.kRotationGains_MotProf.kPeakOutput;
 
-        _config.remoteFilter0.remoteSensorDeviceID = PIGEON_ID;
-        _config.remoteFilter0.remoteSensorSource = RemoteSensorSource.Pigeon_Pitch;
+        rotationConfig.remoteFilter0.remoteSensorDeviceID = PIGEON_ID;
+        rotationConfig.remoteFilter0.remoteSensorSource = RemoteSensorSource.Pigeon_Pitch;
 
 
-        // _config.slot0.allowableClosedloopError // left default for this example
-        // _config.slot0.maxIntegralAccumulator; // left default for this example
-        // _config.slot0.closedLoopPeriod; // left default for this example
-        _master.configAllSettings(_config);
+        // rotationConfig.slot0.allowableClosedloopError // left default for this example
+        // rotationConfig.slot0.maxIntegralAccumulator; // left default for this example
+        // rotationConfig.slot0.closedLoopPeriod; // left default for this example
+        rotationTalon.configAllSettings(rotationConfig);
 
-        _master.configSelectedFeedbackSensor(FeedbackDevice.RemoteSensor0);
-        _master.setSensorPhase(true);
+        rotationTalon.configSelectedFeedbackSensor(FeedbackDevice.RemoteSensor0);
+        rotationTalon.setSensorPhase(true);
 
         /* pick the sensor phase and desired direction */
-        _master.setInverted(TalonFXInvertType.CounterClockwise);
-		/*
-		 * Talon FX does not need sensor phase set for its integrated sensor
-		 * This is because it will always be correct if the selected feedback device is integrated sensor (default value)
-		 * and the user calls getSelectedSensor* to get the sensor's position/velocity.
-		 * 
-		 * https://phoenix-documentation.readthedocs.io/en/latest/ch14_MCSensor.html#sensor-phase
-		 */
-        // _master.setSensorPhase(true);
+        rotationTalon.setInverted(TalonFXInvertType.CounterClockwise);
+
+        /* _config the master specific settings */
+        extensionConfig.primaryPID.selectedFeedbackSensor = TalonFXFeedbackDevice.IntegratedSensor.toFeedbackDevice();
+        extensionConfig.neutralDeadband = Constants.kNeutralDeadband; /* 0.1 % super small for best low-speed control */
+        extensionConfig.slot0.kF = Constants.kExtensionGains_MotProf.kF;
+        extensionConfig.slot0.kP = Constants.kExtensionGains_MotProf.kP;
+        extensionConfig.slot0.kI = Constants.kExtensionGains_MotProf.kI;
+        extensionConfig.slot0.kD = Constants.kExtensionGains_MotProf.kD;
+        extensionConfig.slot0.integralZone = (int) Constants.kExtensionGains_MotProf.kIzone;
+        extensionConfig.slot0.closedLoopPeakOutput = Constants.kExtensionGains_MotProf.kPeakOutput;
+        // extensionConfig.slot0.allowableClosedloopError // left default for this example
+        // extensionConfig.slot0.maxIntegralAccumulator; // left default for this example
+        // extensionConfig.slot0.closedLoopPeriod; // left default for this example
+        extensionTalon.configAllSettings(extensionConfig);
+
+        /* pick the sensor phase and desired direction */
+        extensionTalon.setInverted(TalonFXInvertType.CounterClockwise);
     }
 
     public void robotPeriodic() {
         /* get joystick button and stick */
         boolean bPrintValues = _joy.getRawButton(2);
         boolean bFireMp = _joy.getRawButton(1);
-        double axis = _joy.getRawAxis(1);
+        double axis0 = _joy.getRawAxis(0);
+        double axis1 = _joy.getRawAxis(1);
 
         /* if button is up, just drive the motor in PercentOutput */
         if (bFireMp == false) {
@@ -179,7 +208,8 @@ public class Robot extends TimedRobot {
         switch (_state) {
             /* drive master talon normally */
             case 0:
-                _master.set(TalonFXControlMode.PercentOutput, axis * 0.3);
+            rotationTalon.set(TalonFXControlMode.PercentOutput, axis1 * 0.3);
+            extensionTalon.set(TalonFXControlMode.PercentOutput, axis0 * 0.2);
                 if (bFireMp == true) {
                     /* go to MP logic */
                     _state = 1;
@@ -188,16 +218,18 @@ public class Robot extends TimedRobot {
 
             /* fire the MP, and stop calling set() since that will cancel the MP */
             case 1:
-                initBuffer(0, rotationSetpoint.get());
+                initRotationBuffer(extensionSetpoint.get(), rotationSetpoint.get());
+                initExtensionBuffer(extensionSetpoint.get(), rotationSetpoint.get());
                 /* wait for 10 points to buffer in firmware, then transition to MP */
-                _master.startMotionProfile(_bufferedStream, 10, TalonFXControlMode.MotionProfile.toControlMode());
+                rotationTalon.startMotionProfile(rotationBufferedStream, 10, TalonFXControlMode.MotionProfile.toControlMode());
+                extensionTalon.startMotionProfile(extensionBufferedStream, 10, TalonFXControlMode.MotionProfile.toControlMode());
                 _state = 2;
                 Instrum.printLine("MP started");
                 break;
 
             /* wait for MP to finish */
             case 2:
-                if (_master.isMotionProfileFinished()) {
+                if (rotationTalon.isMotionProfileFinished() && extensionTalon.isMotionProfileFinished()) {
                     Instrum.printLine("MP finished");
                     _state = 3;
                 }
@@ -209,10 +241,10 @@ public class Robot extends TimedRobot {
         }
 
         /* print MP values */
-        Instrum.loop(bPrintValues, _master);
+        Instrum.loop(bPrintValues, rotationTalon, extensionTalon);
     }
 
-    public void initBuffer(double extension, double rotation) {
+    public void initRotationBuffer(double extension, double rotation) {
         // public static BufferedTrajectoryPointStream generateTrajectory(double
         // theta_0, double
         // theta_f, Constraints constraints) { //TODO: consider generating motion
@@ -232,15 +264,69 @@ public class Robot extends TimedRobot {
                 new State(
                         radiansToPigeon(Units.degreesToRadians(rotation)),
                         0),
-                new State(_master.getSelectedSensorPosition(Constants.kPrimaryPIDSlot), 0));
+                new State(rotationTalon.getSelectedSensorPosition(Constants.kPrimaryPIDSlot), 0));
 
         // based on
         // https://v5.docs.ctr-electronics.com/en/stable/ch16_ClosedLoop.html#motion-profiling-closed-loop
-        BufferedTrajectoryPointStream stream = new BufferedTrajectoryPointStream();
         TrajectoryPoint point = new TrajectoryPoint();
 
         /* clear the buffer, in case it was used elsewhere */
-        _bufferedStream.Clear();
+        rotationBufferedStream.Clear();
+
+        for (double t = 0; !profile.isFinished(t - LOOP_DT_MS / 1000.0); t += LOOP_DT_MS / 1000.0) {
+            double rotationPosition = profile.calculate(t).position;
+            double rotationVelocity = profile.calculate(t).velocity;
+
+            point.timeDur = LOOP_DT_MS;
+            point.position = rotationPosition;
+            point.velocity = rotationVelocity;
+            point.auxiliaryPos = 0;
+            point.auxiliaryVel = 0;
+            point.profileSlotSelect0 = Constants.kPrimaryPIDSlot; /* which set of gains would you like to use [0,3]? */
+            point.profileSlotSelect1 = 0; /* auxiliary PID [0,1], leave zero */
+            point.zeroPos = (t == 0); /* set this to true on the first point */
+            point.isLastPoint = profile.isFinished(t); /* set this to true on the last point */
+            point.arbFeedFwd = calculateRotationFeedForward(extension, Units.degreesToRadians(rotation));
+
+            rotationBufferedStream.Write(point);
+        }
+    }
+
+    public void initExtensionBuffer(double extension, double rotation) {
+        // public static BufferedTrajectoryPointStream generateTrajectory(double
+        // theta_0, double
+        // theta_f, Constraints constraints) { //TODO: consider generating motion
+        // profiles for the
+        // elevator and the arm together, that way the kG feedforward can be perfect
+        /*
+         * Trapezoidal profile for the angle of the arm as a function of time. The motor
+         * profile is generated using
+         * calculateMotorPosition() and calculateMotorVelocity such that the motion of
+         * the arm matches this trajectory
+         */
+        Constraints constraints = new Constraints(
+                mpsToFalconMotionMagicUnits(
+                        extensionMotionProfileExtensionCruiseVelocity.get(),
+                        EXTENSION_PULLEY_CIRCUMFERENCE,
+                        EXTENSION_GEAR_RATIO),
+                mpsToFalconMotionMagicUnits(
+                        extensionMotionProfileAcceleration.get(),
+                        EXTENSION_PULLEY_CIRCUMFERENCE,
+                        EXTENSION_GEAR_RATIO));
+        TrapezoidProfile profile = new TrapezoidProfile(
+                constraints,
+                new State(
+                        Conversions.metersToFalcon(
+                                Units.inchesToMeters(extension), EXTENSION_PULLEY_CIRCUMFERENCE, EXTENSION_GEAR_RATIO),
+                        0),
+                new State(extensionTalon.getSelectedSensorPosition(Constants.kPrimaryPIDSlot), 0));
+
+        // based on
+        // https://v5.docs.ctr-electronics.com/en/stable/ch16_ClosedLoop.html#motion-profiling-closed-loop
+        TrajectoryPoint point = new TrajectoryPoint();
+
+        /* clear the buffer, in case it was used elsewhere */
+        extensionBufferedStream.Clear();
 
         for (double t = 0; !profile.isFinished(t - LOOP_DT_MS / 1000.0); t += LOOP_DT_MS / 1000.0) {
             double extensionPosition = profile.calculate(t).position;
@@ -255,9 +341,9 @@ public class Robot extends TimedRobot {
             point.profileSlotSelect1 = 0; /* auxiliary PID [0,1], leave zero */
             point.zeroPos = (t == 0); /* set this to true on the first point */
             point.isLastPoint = profile.isFinished(t); /* set this to true on the last point */
-            point.arbFeedFwd = calculateRotationFeedForward(extension, Units.degreesToRadians(rotation));
+            point.arbFeedFwd = calculateExtensionFeedForward(extension, Units.degreesToRadians(rotation));
 
-            _bufferedStream.Write(point);
+            extensionBufferedStream.Write(point);
         }
     }
 

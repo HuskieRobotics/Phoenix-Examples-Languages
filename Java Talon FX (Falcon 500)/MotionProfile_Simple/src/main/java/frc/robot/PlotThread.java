@@ -8,17 +8,18 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
  */
 class PlotThread implements Runnable {
 
-	private TalonFX _talon;
+	private TalonFX _extensionTalon;
+	private TalonFX _rotationTalon;
 	private Thread _thread;
 
-	public PlotThread(TalonFX talon)
-	{
-		_talon = talon;
+	public PlotThread(TalonFX rotationTalon, TalonFX extensionTalon) {
+		_rotationTalon = rotationTalon;
+		_extensionTalon = extensionTalon;
 
-		_thread= new Thread(this);
+		_thread = new Thread(this);
 		_thread.start();
 	}
-	
+
 	public void run() {
 		/**
 		 * Speed up network tables, this is a test project so eat up all of the network
@@ -34,16 +35,27 @@ class PlotThread implements Runnable {
 			}
 
 			/* Grab the latest signal update from our 1ms frame update */
-			double sen_pos = _talon.getSelectedSensorPosition(0);
-			double sen_vel = _talon.getSelectedSensorVelocity(0);
-			double trgt_pos = _talon.getActiveTrajectoryPosition(0);
-			double trgt_vel = _talon.getActiveTrajectoryVelocity(0);
-			double trgt_arbF = _talon.getActiveTrajectoryArbFeedFwd(0);
-			SmartDashboard.putNumber("sen_pos", sen_pos);
-			SmartDashboard.putNumber("sen_vel", sen_vel);
-			SmartDashboard.putNumber("trgt_pos", trgt_pos);
-			SmartDashboard.putNumber("trgt_vel", trgt_vel);
-			SmartDashboard.putNumber("trgt_arbF", trgt_arbF);
+			double sen_pos = _rotationTalon.getSelectedSensorPosition(0);
+			double sen_vel = _rotationTalon.getSelectedSensorVelocity(0);
+			double trgt_pos = _rotationTalon.getActiveTrajectoryPosition(0);
+			double trgt_vel = _rotationTalon.getActiveTrajectoryVelocity(0);
+			double trgt_arbF = _rotationTalon.getActiveTrajectoryArbFeedFwd(0);
+			SmartDashboard.putNumber("rot_sen_pos", sen_pos);
+			SmartDashboard.putNumber("rot_sen_vel", sen_vel);
+			SmartDashboard.putNumber("rot_trgt_pos", trgt_pos);
+			SmartDashboard.putNumber("rot_trgt_vel", trgt_vel);
+			SmartDashboard.putNumber("rot_trgt_arbF", trgt_arbF);
+
+			sen_pos = _extensionTalon.getSelectedSensorPosition(0);
+			sen_vel = _extensionTalon.getSelectedSensorVelocity(0);
+			trgt_pos = _extensionTalon.getActiveTrajectoryPosition(0);
+			trgt_vel = _extensionTalon.getActiveTrajectoryVelocity(0);
+			trgt_arbF = _extensionTalon.getActiveTrajectoryArbFeedFwd(0);
+			SmartDashboard.putNumber("ext_sen_pos", sen_pos);
+			SmartDashboard.putNumber("ext_sen_vel", sen_vel);
+			SmartDashboard.putNumber("ext_trgt_pos", trgt_pos);
+			SmartDashboard.putNumber("ext_trgt_vel", trgt_vel);
+			SmartDashboard.putNumber("ext_trgt_arbF", trgt_arbF);
 		}
 	}
 }
