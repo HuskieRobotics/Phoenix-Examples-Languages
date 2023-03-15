@@ -85,7 +85,7 @@ public class Robot extends TimedRobot {
             "ElevatorRotation/MPRetractionVelocity(deg/s)",
             ROTATION_MAX_ELEVATOR_RETRACTION_VELOCITY_DEGREES_PER_SECOND);
 
-            private final TunableNumber extensionMotionProfileAcceleration = new TunableNumber(
+    private final TunableNumber extensionMotionProfileAcceleration = new TunableNumber(
             "ElevatorExtension/MPAcceleration(m/s/s)",
             EXTENSION_ELEVATOR_ACCELERATION_METERS_PER_SECOND_PER_SECOND);
     private final TunableNumber extensionMotionProfileExtensionCruiseVelocity = new TunableNumber(
@@ -95,22 +95,19 @@ public class Robot extends TimedRobot {
             "ElevatorExtension/MPRetractionVelocity(m/s)",
             EXTENSION_MAX_ELEVATOR_RETRACTION_VELOCITY_METERS_PER_SECOND);
 
-    
-
     private final TunableNumber rotationSetpoint = new TunableNumber(
             "ElevatorRotation/Setpoint(deg)",
             45);
 
-            private final TunableNumber extensionSetpoint = new TunableNumber(
+    private final TunableNumber extensionSetpoint = new TunableNumber(
             "ElevatorExtension/Setpoint(in)",
             44);
 
-            // positive values rotation finishes after the extension
-            // negative values: extension finishes after the rotation
+    // positive values rotation finishes after the extension
+    // negative values: extension finishes after the rotation
     private final TunableNumber extensionRotationProfileDelta = new TunableNumber(
-                "Elevator/ProfileDelta(s)",
-                2.0);
-
+            "Elevator/ProfileDelta(s)",
+            2.0);
 
     /** very simple state machine to prevent calling set() while firing MP. */
     int _state = 0;
@@ -131,13 +128,14 @@ public class Robot extends TimedRobot {
     /* talon configs */
     TalonFXConfiguration rotationConfig = new TalonFXConfiguration(); // factory default settings
     TalonFXConfiguration extensionConfig = new TalonFXConfiguration(); // factory default settings
-    
+
     /* quick and dirty plotter to smartdash */
     PlotThread _plotThread = new PlotThread(rotationTalon, extensionTalon);
 
     public void simulationInit() {
         PhysicsSim.getInstance().addTalonFX(rotationTalon, 0.5, 6800);
     }
+
     public void simulationPeriodic() {
         PhysicsSim.getInstance().run();
     }
@@ -145,19 +143,20 @@ public class Robot extends TimedRobot {
     public void robotInit() {
 
         /* create and configure the Pigeon */
-    this.pigeon = new Pigeon2(PIGEON_ID, "canbus1");
-    Pigeon2Configuration config = new Pigeon2Configuration();
-    // set mount pose as rolled 90 degrees clockwise
-    config.MountPoseYaw = 0;
-    config.MountPoseRoll = -90.0;
-    this.pigeon.configAllSettings(config);
-    this.pigeon.setStatusFramePeriod(PigeonIMU_StatusFrame.CondStatus_9_SixDeg_YPR, 9);
+        this.pigeon = new Pigeon2(PIGEON_ID, "canbus1");
+        Pigeon2Configuration config = new Pigeon2Configuration();
+        // set mount pose as rolled 90 degrees clockwise
+        config.MountPoseYaw = 0;
+        config.MountPoseRoll = -90.0;
+        this.pigeon.configAllSettings(config);
+        this.pigeon.setStatusFramePeriod(PigeonIMU_StatusFrame.CondStatus_9_SixDeg_YPR, 9);
 
         /* fill our buffer object with the excel points */
-        //initBuffer(0, 20);
+        // initBuffer(0, 20);
 
         /* rotationConfig the master specific settings */
-        //rotationConfig.primaryPID.selectedFeedbackSensor = TalonFXFeedbackDevice.IntegratedSensor.toFeedbackDevice();
+        // rotationConfig.primaryPID.selectedFeedbackSensor =
+        // TalonFXFeedbackDevice.IntegratedSensor.toFeedbackDevice();
         rotationConfig.neutralDeadband = Constants.kNeutralDeadband; /* 0.1 % super small for best low-speed control */
         rotationConfig.slot0.kF = Constants.kRotationGains_MotProf.kF;
         rotationConfig.slot0.kP = Constants.kRotationGains_MotProf.kP;
@@ -169,8 +168,8 @@ public class Robot extends TimedRobot {
         rotationConfig.remoteFilter0.remoteSensorDeviceID = PIGEON_ID;
         rotationConfig.remoteFilter0.remoteSensorSource = RemoteSensorSource.Pigeon_Pitch;
 
-
-        // rotationConfig.slot0.allowableClosedloopError // left default for this example
+        // rotationConfig.slot0.allowableClosedloopError // left default for this
+        // example
         // rotationConfig.slot0.maxIntegralAccumulator; // left default for this example
         // rotationConfig.slot0.closedLoopPeriod; // left default for this example
         rotationTalon.configAllSettings(rotationConfig);
@@ -190,8 +189,10 @@ public class Robot extends TimedRobot {
         extensionConfig.slot0.kD = Constants.kExtensionGains_MotProf.kD;
         extensionConfig.slot0.integralZone = (int) Constants.kExtensionGains_MotProf.kIzone;
         extensionConfig.slot0.closedLoopPeakOutput = Constants.kExtensionGains_MotProf.kPeakOutput;
-        // extensionConfig.slot0.allowableClosedloopError // left default for this example
-        // extensionConfig.slot0.maxIntegralAccumulator; // left default for this example
+        // extensionConfig.slot0.allowableClosedloopError // left default for this
+        // example
+        // extensionConfig.slot0.maxIntegralAccumulator; // left default for this
+        // example
         // extensionConfig.slot0.closedLoopPeriod; // left default for this example
         extensionTalon.configAllSettings(extensionConfig);
 
@@ -214,8 +215,8 @@ public class Robot extends TimedRobot {
         switch (_state) {
             /* drive master talon normally */
             case 0:
-            rotationTalon.set(TalonFXControlMode.PercentOutput, axis1 * 0.3);
-            extensionTalon.set(TalonFXControlMode.PercentOutput, axis0 * 0.2);
+                rotationTalon.set(TalonFXControlMode.PercentOutput, axis1 * 0.3);
+                extensionTalon.set(TalonFXControlMode.PercentOutput, axis0 * 0.2);
                 if (bFireMp == true) {
                     /* go to MP logic */
                     _state = 1;
@@ -226,9 +227,11 @@ public class Robot extends TimedRobot {
             case 1:
                 initBuffers(extensionSetpoint.get(), rotationSetpoint.get());
 
-                rotationTalon.startMotionProfile(rotationBufferedStream, 10, TalonFXControlMode.MotionProfile.toControlMode());
-                extensionTalon.startMotionProfile(extensionBufferedStream, 10, TalonFXControlMode.MotionProfile.toControlMode());
-                
+                rotationTalon.startMotionProfile(rotationBufferedStream, 10,
+                        TalonFXControlMode.MotionProfile.toControlMode());
+                extensionTalon.startMotionProfile(extensionBufferedStream, 10,
+                        TalonFXControlMode.MotionProfile.toControlMode());
+
                 _state = 2;
                 Instrum.printLine("MP started");
                 break;
@@ -265,37 +268,47 @@ public class Robot extends TimedRobot {
         Constraints rotationConstraints = new Constraints(
                 radiansToPigeon(Units.degreesToRadians(rotationMotionProfileExtensionCruiseVelocity.get())),
                 radiansToPigeon(Units.degreesToRadians(rotationMotionProfileAcceleration.get())));
+        State rotationStartState = new State(rotationTalon.getSelectedSensorPosition(Constants.kPrimaryPIDSlot), 0);
         TrapezoidProfile rotationProfile = new TrapezoidProfile(
-            rotationConstraints,
+                rotationConstraints,
                 new State(
                         radiansToPigeon(Units.degreesToRadians(rotation)),
                         0),
-                new State(rotationTalon.getSelectedSensorPosition(Constants.kPrimaryPIDSlot), 0));
+                rotationStartState);
 
-                Constraints extensionConstraints = new Constraints(
-                    mpsToFalconMotionMagicUnits(
-                            extensionMotionProfileExtensionCruiseVelocity.get(),
-                            EXTENSION_PULLEY_CIRCUMFERENCE,
-                            EXTENSION_GEAR_RATIO),
-                    mpsToFalconMotionMagicUnits(
-                            extensionMotionProfileAcceleration.get(),
-                            EXTENSION_PULLEY_CIRCUMFERENCE,
-                            EXTENSION_GEAR_RATIO));
-            TrapezoidProfile extensionProfile = new TrapezoidProfile(
+        Constraints extensionConstraints = new Constraints(
+                mpsToFalconMotionMagicUnits(
+                        extensionMotionProfileExtensionCruiseVelocity.get(),
+                        EXTENSION_PULLEY_CIRCUMFERENCE,
+                        EXTENSION_GEAR_RATIO),
+                mpsToFalconMotionMagicUnits(
+                        extensionMotionProfileAcceleration.get(),
+                        EXTENSION_PULLEY_CIRCUMFERENCE,
+                        EXTENSION_GEAR_RATIO));
+        State extensionStartState = new State(extensionTalon.getSelectedSensorPosition(Constants.kPrimaryPIDSlot), 0);
+        TrapezoidProfile extensionProfile = new TrapezoidProfile(
                 extensionConstraints,
-                    new State(
-                            Conversions.metersToFalcon(
-                                    Units.inchesToMeters(extension), EXTENSION_PULLEY_CIRCUMFERENCE, EXTENSION_GEAR_RATIO),
-                            0),
-                    new State(extensionTalon.getSelectedSensorPosition(Constants.kPrimaryPIDSlot), 0));
-    
+                new State(
+                        Conversions.metersToFalcon(
+                                Units.inchesToMeters(extension), EXTENSION_PULLEY_CIRCUMFERENCE, EXTENSION_GEAR_RATIO),
+                        0),
+                extensionStartState);
 
         // subtract durationDifference to the time when generating the extension profile
-        double durationDifference = rotationProfile.totalTime() - extensionProfile.totalTime() - extensionRotationProfileDelta.get();
+        double durationDifference = rotationProfile.totalTime() - extensionProfile.totalTime()
+                - extensionRotationProfileDelta.get();
 
-        // FIXME: determine timeoffsets for each of rotation and extension; ensuring one equals 0 and the other is negative
+        double extensionTimeOffset = 0.0;
+        double rotationTimeOffset = 0.0;
 
+        if (durationDifference > 0) {
+            extensionTimeOffset = -durationDifference;
+        } else {
+            rotationTimeOffset = durationDifference;
+        }
 
+        // FIXME: determine timeoffsets for each of rotation and extension; ensuring one
+        // equals 0 and the other is negative
 
         // based on
         // https://v5.docs.ctr-electronics.com/en/stable/ch16_ClosedLoop.html#motion-profiling-closed-loop
@@ -305,13 +318,34 @@ public class Robot extends TimedRobot {
         rotationBufferedStream.Clear();
         extensionBufferedStream.Clear();
 
-        for (double t = 0; !rotationProfile.isFinished(t - LOOP_DT_MS / 1000.0) && !extensionProfile.isFinished(t - LOOP_DT_MS / 1000.0); t += LOOP_DT_MS / 1000.0) {
-            double rotationPosition = rotationProfile.calculate(t).position;
-            double rotationVelocity = rotationProfile.calculate(t).velocity;
+        for (double t = 0; !rotationProfile.isFinished(t + rotationTimeOffset - LOOP_DT_MS / 1000.0)
+                && !extensionProfile.isFinished(t + extensionTimeOffset - LOOP_DT_MS / 1000.0); t += LOOP_DT_MS
+                        / 1000.0) {
 
-            double extensionPosition = extensionProfile.calculate(t).position;
-            double extensionVelocity = extensionProfile.calculate(t).velocity;
+            boolean lastPoint = rotationProfile.isFinished(t + rotationTimeOffset)
+                && extensionProfile.isFinished(t + extensionTimeOffset);
 
+            double rotationPosition;
+            double rotationVelocity;
+            double extensionPosition;
+            double extensionVelocity;
+
+            // we may invoke calculate after the end of the profile; if we do, it just returns the goal state
+            if (t + rotationTimeOffset >= 0) {
+                rotationPosition = rotationProfile.calculate(t).position;
+                rotationVelocity = rotationProfile.calculate(t).velocity;
+            } else {
+                rotationPosition = rotationStartState.position;
+                rotationVelocity = rotationStartState.velocity;
+            }
+
+            if (t + extensionTimeOffset >= 0) {
+                extensionPosition = extensionProfile.calculate(t).position;
+                extensionVelocity = extensionProfile.calculate(t).velocity;
+            } else {
+                extensionPosition = extensionStartState.position;
+                extensionVelocity = extensionStartState.velocity;
+            }
 
             point.timeDur = LOOP_DT_MS;
             point.position = rotationPosition;
@@ -321,13 +355,13 @@ public class Robot extends TimedRobot {
             point.profileSlotSelect0 = Constants.kPrimaryPIDSlot; /* which set of gains would you like to use [0,3]? */
             point.profileSlotSelect1 = 0; /* auxiliary PID [0,1], leave zero */
             point.zeroPos = (t == 0); /* set this to true on the first point */
-            point.isLastPoint = rotationProfile.isFinished(t); /* set this to true on the last point */
+            point.isLastPoint = lastPoint; /* set this to true on the last point */
             point.arbFeedFwd = calculateRotationFeedForward(Units.metersToInches(Conversions
-                    .falconToMeters(extensionPosition, EXTENSION_PULLEY_CIRCUMFERENCE, EXTENSION_GEAR_RATIO)), pigeonToRadians(rotationPosition));
+                    .falconToMeters(extensionPosition, EXTENSION_PULLEY_CIRCUMFERENCE, EXTENSION_GEAR_RATIO)),
+                    pigeonToRadians(rotationPosition));
 
             rotationBufferedStream.Write(point);
 
-            
             point.timeDur = LOOP_DT_MS;
             point.position = extensionPosition;
             point.velocity = extensionVelocity;
@@ -336,56 +370,13 @@ public class Robot extends TimedRobot {
             point.profileSlotSelect0 = Constants.kPrimaryPIDSlot; /* which set of gains would you like to use [0,3]? */
             point.profileSlotSelect1 = 0; /* auxiliary PID [0,1], leave zero */
             point.zeroPos = (t == 0); /* set this to true on the first point */
-            point.isLastPoint = extensionProfile.isFinished(t); /* set this to true on the last point */
+            point.isLastPoint = lastPoint; /* set this to true on the last point */
             point.arbFeedFwd = calculateExtensionFeedForward(Units.metersToInches(Conversions
                     .falconToMeters(extensionPosition, EXTENSION_PULLEY_CIRCUMFERENCE, EXTENSION_GEAR_RATIO)),
                     pigeonToRadians(rotationPosition));
 
             extensionBufferedStream.Write(point);
         }
-    }
-
-    public double initExtensionBuffer(double extension, double rotation) {
-        // public static BufferedTrajectoryPointStream generateTrajectory(double
-        // theta_0, double
-        // theta_f, Constraints constraints) { //TODO: consider generating motion
-        // profiles for the
-        // elevator and the arm together, that way the kG feedforward can be perfect
-        /*
-         * Trapezoidal profile for the angle of the arm as a function of time. The motor
-         * profile is generated using
-         * calculateMotorPosition() and calculateMotorVelocity such that the motion of
-         * the arm matches this trajectory
-         */
-        
-        // based on
-        // https://v5.docs.ctr-electronics.com/en/stable/ch16_ClosedLoop.html#motion-profiling-closed-loop
-        TrajectoryPoint point = new TrajectoryPoint();
-
-        /* clear the buffer, in case it was used elsewhere */
-        extensionBufferedStream.Clear();
-
-        for (double t = 0; !extensionProfile.isFinished(t - LOOP_DT_MS / 1000.0); t += LOOP_DT_MS / 1000.0) {
-            double extensionPosition = extensionProfile.calculate(t).position;
-            double extensionVelocity = extensionProfile.calculate(t).velocity;
-
-            point.timeDur = LOOP_DT_MS;
-            point.position = extensionPosition;
-            point.velocity = extensionVelocity;
-            point.auxiliaryPos = 0;
-            point.auxiliaryVel = 0;
-            point.profileSlotSelect0 = Constants.kPrimaryPIDSlot; /* which set of gains would you like to use [0,3]? */
-            point.profileSlotSelect1 = 0; /* auxiliary PID [0,1], leave zero */
-            point.zeroPos = (t == 0); /* set this to true on the first point */
-            point.isLastPoint = extensionProfile.isFinished(t); /* set this to true on the last point */
-            point.arbFeedFwd = calculateExtensionFeedForward(Units.metersToInches(Conversions
-                    .falconToMeters(extensionPosition, EXTENSION_PULLEY_CIRCUMFERENCE, EXTENSION_GEAR_RATIO)),
-                    Units.degreesToRadians(rotation));
-
-            extensionBufferedStream.Write(point);
-        }
-
-        return profile.totalTime();
     }
 
     private static double mpsToFalconMotionMagicUnits(
@@ -398,68 +389,62 @@ public class Robot extends TimedRobot {
 
     private double pigeonToRadians(double counts) {
         return counts / PIGEON_UNITS_PER_ROTATION * (2 * Math.PI);
-      }
-    
-      private double radiansToPigeon(double radians) {
+    }
+
+    private double radiansToPigeon(double radians) {
         return radians / (2 * Math.PI) * PIGEON_UNITS_PER_ROTATION;
-      }
-
-      private static final double D1 = 39.8;
-  private static final double D2 = 40.3;
-  private static final double D3 = 3.9;
-  private static final double D5 = 40.5;
-  private static final double H1 = 14.0;
-  private static final double H2 = 49.0;
-  private static final double M = 21.6;
-  private static final double T_SPRING = 34.0;
-  private static final double MAX_EXTENSION_BEFORE_MOVING_STAGE_ENGAGEMENT = 34.0;
-  private static final double CARRIAGE_MASS = 8.682;
-  private static final double MOVING_STAGE_MASS = 4.252;
-  private static final double FIXED_STAGE_MASS = 9.223;
-  private static final double F_COLLAPSED_ELEVATOR_AT_11_DEG = 25.712; // FIXME: update after tuning
-  private static final double MIN_MOTOR_POWER_TO_EXTEND_CARRIAGE_AT_60_DEG = 0.05; // FIXME: tune
-  private static final double MIN_MOTOR_POWER_TO_ROTATE_COLLAPSED_ELEVATOR_AT_11_DEG =
-      0.05; // FIXME: tune
-
-  private static double calculateRotationFeedForward(double extension, double rotation) {
-    double r =
-        Math.sqrt(
-            Math.pow((D2 - D1 * Math.sin(rotation)), 2)
-                + Math.pow((D1 * Math.cos(rotation) + D3), 2));
-    double Sa =
-        Math.sqrt(
-            1 - Math.pow((Math.pow(r, 2) + Math.pow(D1, 2) - Math.pow(D5, 2)) / (2 * D1 * r), 2));
-    double h;
-
-    if (extension <= MAX_EXTENSION_BEFORE_MOVING_STAGE_ENGAGEMENT) {
-      h = 14.0 + 0.441176 * extension;
-    } else {
-      h = 0.575539 * extension + 9.43165;
     }
 
-    double F3 =
-        (M * h * Math.cos(rotation) + T_SPRING * ((2 * rotation / Math.PI) + 1.0 / 3.0))
-            / (D1 * Sa);
+    private static final double D1 = 39.8;
+    private static final double D2 = 40.3;
+    private static final double D3 = 3.9;
+    private static final double D5 = 40.5;
+    private static final double H1 = 14.0;
+    private static final double H2 = 49.0;
+    private static final double M = 21.6;
+    private static final double T_SPRING = 34.0;
+    private static final double MAX_EXTENSION_BEFORE_MOVING_STAGE_ENGAGEMENT = 34.0;
+    private static final double CARRIAGE_MASS = 8.682;
+    private static final double MOVING_STAGE_MASS = 4.252;
+    private static final double FIXED_STAGE_MASS = 9.223;
+    private static final double F_COLLAPSED_ELEVATOR_AT_11_DEG = 25.712; // FIXME: update after tuning
+    private static final double MIN_MOTOR_POWER_TO_EXTEND_CARRIAGE_AT_60_DEG = 0.05; // FIXME: tune
+    private static final double MIN_MOTOR_POWER_TO_ROTATE_COLLAPSED_ELEVATOR_AT_11_DEG = 0.05; // FIXME: tune
 
-    double feedForward =
-        (MIN_MOTOR_POWER_TO_ROTATE_COLLAPSED_ELEVATOR_AT_11_DEG / F_COLLAPSED_ELEVATOR_AT_11_DEG)
-            * F3;
-    return feedForward;
-  }
+    private static double calculateRotationFeedForward(double extension, double rotation) {
+        double r = Math.sqrt(
+                Math.pow((D2 - D1 * Math.sin(rotation)), 2)
+                        + Math.pow((D1 * Math.cos(rotation) + D3), 2));
+        double Sa = Math.sqrt(
+                1 - Math.pow((Math.pow(r, 2) + Math.pow(D1, 2) - Math.pow(D5, 2)) / (2 * D1 * r), 2));
+        double h;
 
-  private static double calculateExtensionFeedForward(double extension, double rotation) {
-    double mass;
-    if (extension <= MAX_EXTENSION_BEFORE_MOVING_STAGE_ENGAGEMENT) {
-      mass = CARRIAGE_MASS;
-    } else {
-      mass = (CARRIAGE_MASS + MOVING_STAGE_MASS) / 2.0; // two belts are now in tension
+        if (extension <= MAX_EXTENSION_BEFORE_MOVING_STAGE_ENGAGEMENT) {
+            h = 14.0 + 0.441176 * extension;
+        } else {
+            h = 0.575539 * extension + 9.43165;
+        }
+
+        double F3 = (M * h * Math.cos(rotation) + T_SPRING * ((2 * rotation / Math.PI) + 1.0 / 3.0))
+                / (D1 * Sa);
+
+        double feedForward = (MIN_MOTOR_POWER_TO_ROTATE_COLLAPSED_ELEVATOR_AT_11_DEG / F_COLLAPSED_ELEVATOR_AT_11_DEG)
+                * F3;
+        return feedForward;
     }
 
-    double f = mass * Math.sin(rotation);
+    private static double calculateExtensionFeedForward(double extension, double rotation) {
+        double mass;
+        if (extension <= MAX_EXTENSION_BEFORE_MOVING_STAGE_ENGAGEMENT) {
+            mass = CARRIAGE_MASS;
+        } else {
+            mass = (CARRIAGE_MASS + MOVING_STAGE_MASS) / 2.0; // two belts are now in tension
+        }
 
-    double feedForward =
-        (MIN_MOTOR_POWER_TO_EXTEND_CARRIAGE_AT_60_DEG / (CARRIAGE_MASS * 0.866)) * f;
-    return feedForward;
-  }
-    
+        double f = mass * Math.sin(rotation);
+
+        double feedForward = (MIN_MOTOR_POWER_TO_EXTEND_CARRIAGE_AT_60_DEG / (CARRIAGE_MASS * 0.866)) * f;
+        return feedForward;
+    }
+
 }
