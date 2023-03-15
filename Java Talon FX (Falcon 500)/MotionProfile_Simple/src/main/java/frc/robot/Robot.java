@@ -179,7 +179,7 @@ public class Robot extends TimedRobot {
         switch (_state) {
             /* drive master talon normally */
             case 0:
-                _master.set(TalonFXControlMode.PercentOutput, axis);
+                _master.set(TalonFXControlMode.PercentOutput, axis * 0.3);
                 if (bFireMp == true) {
                     /* go to MP logic */
                     _state = 1;
