@@ -164,7 +164,7 @@ public class Robot extends TimedRobot {
             /* fire the MP, and stop calling set() since that will cancel the MP */
             case 1:
                 /* fill our buffer object with the excel points */
-                initBuffer(Units.inchesToMeters(extensionSetpoint.get()), 66.0);
+                initBuffer(extensionSetpoint.get(), 66.0);
 
                 /* wait for 10 points to buffer in firmware, then transition to MP */
                 _master.startMotionProfile(_bufferedStream, 10, TalonFXControlMode.MotionProfile.toControlMode());
@@ -214,7 +214,7 @@ public class Robot extends TimedRobot {
                 constraints,
                 new State(
                         Conversions.metersToFalcon(
-                                extension, EXTENSION_PULLEY_CIRCUMFERENCE, EXTENSION_GEAR_RATIO),
+                                Units.inchesToMeters(extension), EXTENSION_PULLEY_CIRCUMFERENCE, EXTENSION_GEAR_RATIO),
                         0),
                 new State(_master.getSelectedSensorPosition(Constants.kPrimaryPIDSlot), 0));
 
