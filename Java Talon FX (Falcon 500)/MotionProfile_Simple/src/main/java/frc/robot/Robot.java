@@ -105,9 +105,15 @@ public class Robot extends TimedRobot {
             "ElevatorExtension/Setpoint(in)",
             44);
 
+    private final TunableNumber extensionRotationProfileDelta = new TunableNumber(
+                "Elevator/ProfileDelta(ms)",
+                100.0);
+
 
     /** very simple state machine to prevent calling set() while firing MP. */
     int _state = 0;
+
+    int loopCount = 0;
 
     /** a master talon, add followers if need be. */
     WPI_TalonFX rotationTalon = new WPI_TalonFX(19, "canbus1");
@@ -220,6 +226,7 @@ public class Robot extends TimedRobot {
             case 1:
                 initRotationBuffer(extensionSetpoint.get(), rotationSetpoint.get());
                 initExtensionBuffer(extensionSetpoint.get(), rotationSetpoint.get());
+                
                 /* wait for 10 points to buffer in firmware, then transition to MP */
                 rotationTalon.startMotionProfile(rotationBufferedStream, 10, TalonFXControlMode.MotionProfile.toControlMode());
                 extensionTalon.startMotionProfile(extensionBufferedStream, 10, TalonFXControlMode.MotionProfile.toControlMode());
