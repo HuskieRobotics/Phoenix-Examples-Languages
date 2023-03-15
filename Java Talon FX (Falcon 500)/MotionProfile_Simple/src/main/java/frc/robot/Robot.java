@@ -255,7 +255,7 @@ public class Robot extends TimedRobot {
             point.profileSlotSelect1 = 0; /* auxiliary PID [0,1], leave zero */
             point.zeroPos = (t == 0); /* set this to true on the first point */
             point.isLastPoint = profile.isFinished(t); /* set this to true on the last point */
-            point.arbFeedFwd = 0; // calculatekG(theta_arm); //apply kG as an arbitrary feedforward
+            point.arbFeedFwd = calculateRotationFeedForward(extension, Units.degreesToRadians(rotation));
 
             _bufferedStream.Write(point);
         }
@@ -276,5 +276,63 @@ public class Robot extends TimedRobot {
       private double radiansToPigeon(double radians) {
         return radians / (2 * Math.PI) * PIGEON_UNITS_PER_ROTATION;
       }
+
+      private static final double D1 = 39.8;
+  private static final double D2 = 40.3;
+  private static final double D3 = 3.9;
+  private static final double D5 = 40.5;
+  private static final double H1 = 14.0;
+  private static final double H2 = 49.0;
+  private static final double M = 21.6;
+  private static final double T_SPRING = 34.0;
+  private static final double MAX_EXTENSION_BEFORE_MOVING_STAGE_ENGAGEMENT = 34.0;
+  private static final double CARRIAGE_MASS = 8.682;
+  private static final double MOVING_STAGE_MASS = 4.252;
+  private static final double FIXED_STAGE_MASS = 9.223;
+  private static final double F_COLLAPSED_ELEVATOR_AT_11_DEG = 25.712; // FIXME: update after tuning
+  private static final double MIN_MOTOR_POWER_TO_EXTEND_CARRIAGE_AT_60_DEG = 0.05; // FIXME: tune
+  private static final double MIN_MOTOR_POWER_TO_ROTATE_COLLAPSED_ELEVATOR_AT_11_DEG =
+      0.05; // FIXME: tune
+
+  private static double calculateRotationFeedForward(double extension, double rotation) {
+    double r =
+        Math.sqrt(
+            Math.pow((D2 - D1 * Math.sin(rotation)), 2)
+                + Math.pow((D1 * Math.cos(rotation) + D3), 2));
+    double Sa =
+        Math.sqrt(
+            1 - Math.pow((Math.pow(r, 2) + Math.pow(D1, 2) - Math.pow(D5, 2)) / (2 * D1 * r), 2));
+    double h;
+
+    if (extension <= MAX_EXTENSION_BEFORE_MOVING_STAGE_ENGAGEMENT) {
+      h = 14.0 + 0.441176 * extension;
+    } else {
+      h = 0.575539 * extension + 9.43165;
+    }
+
+    double F3 =
+        (M * h * Math.cos(rotation) + T_SPRING * ((2 * rotation / Math.PI) + 1.0 / 3.0))
+            / (D1 * Sa);
+
+    double feedForward =
+        (MIN_MOTOR_POWER_TO_ROTATE_COLLAPSED_ELEVATOR_AT_11_DEG / F_COLLAPSED_ELEVATOR_AT_11_DEG)
+            * F3;
+    return feedForward;
+  }
+
+  private static double calculateExtensionFeedForward(double extension, double rotation) {
+    double mass;
+    if (extension <= MAX_EXTENSION_BEFORE_MOVING_STAGE_ENGAGEMENT) {
+      mass = CARRIAGE_MASS;
+    } else {
+      mass = (CARRIAGE_MASS + MOVING_STAGE_MASS) / 2.0; // two belts are now in tension
+    }
+
+    double f = mass * Math.sin(rotation);
+
+    double feedForward =
+        (MIN_MOTOR_POWER_TO_EXTEND_CARRIAGE_AT_60_DEG / (CARRIAGE_MASS * 0.866)) * f;
+    return feedForward;
+  }
     
 }
