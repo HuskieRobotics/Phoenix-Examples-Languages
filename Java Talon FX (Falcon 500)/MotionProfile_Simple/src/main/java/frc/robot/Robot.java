@@ -72,13 +72,13 @@ public class Robot extends TimedRobot {
     private static final int LOOP_DT_MS = 10;
 
     private final TunableNumber extensionMotionProfileAcceleration = new TunableNumber(
-            "ElevatorExtension/MPAcceleration",
+            "ElevatorExtension/MPAcceleration(m/s/s)",
             EXTENSION_ELEVATOR_ACCELERATION_METERS_PER_SECOND_PER_SECOND);
     private final TunableNumber extensionMotionProfileExtensionCruiseVelocity = new TunableNumber(
-            "ElevatorExtension/MPExtensionVelocity",
+            "ElevatorExtension/MPExtensionVelocity(m/s)",
             EXTENSION_MAX_ELEVATOR_EXTENSION_VELOCITY_METERS_PER_SECOND);
     private final TunableNumber extensionMotionProfileRetractionCruiseVelocity = new TunableNumber(
-            "ElevatorExtension/MPRetractionVelocity",
+            "ElevatorExtension/MPRetractionVelocity(m/s)",
             EXTENSION_MAX_ELEVATOR_RETRACTION_VELOCITY_METERS_PER_SECOND);
 
     private final TunableNumber extensionSetpoint = new TunableNumber(
@@ -220,7 +220,6 @@ public class Robot extends TimedRobot {
 
         // based on
         // https://v5.docs.ctr-electronics.com/en/stable/ch16_ClosedLoop.html#motion-profiling-closed-loop
-        BufferedTrajectoryPointStream stream = new BufferedTrajectoryPointStream();
         TrajectoryPoint point = new TrajectoryPoint();
 
         /* clear the buffer, in case it was used elsewhere */
