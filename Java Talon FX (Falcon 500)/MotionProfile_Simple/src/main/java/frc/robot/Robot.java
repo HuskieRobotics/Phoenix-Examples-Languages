@@ -72,13 +72,13 @@ public class Robot extends TimedRobot {
     private static final int LOOP_DT_MS = 10;
 
     private final TunableNumber extensionMotionProfileAcceleration = new TunableNumber(
-            "ElevatorExtension/MPAcceleration(m/s/s)",
+            "ElevatorExtension/MPAcceleration(mperspers)",
             EXTENSION_ELEVATOR_ACCELERATION_METERS_PER_SECOND_PER_SECOND);
     private final TunableNumber extensionMotionProfileExtensionCruiseVelocity = new TunableNumber(
-            "ElevatorExtension/MPExtensionVelocity(m/s)",
+            "ElevatorExtension/MPExtensionVelocity(mpers)",
             EXTENSION_MAX_ELEVATOR_EXTENSION_VELOCITY_METERS_PER_SECOND);
     private final TunableNumber extensionMotionProfileRetractionCruiseVelocity = new TunableNumber(
-            "ElevatorExtension/MPRetractionVelocity(m/s)",
+            "ElevatorExtension/MPRetractionVelocity(mpers)",
             EXTENSION_MAX_ELEVATOR_RETRACTION_VELOCITY_METERS_PER_SECOND);
 
     private final TunableNumber extensionSetpoint = new TunableNumber(
@@ -124,6 +124,7 @@ public class Robot extends TimedRobot {
         // _config.slot0.allowableClosedloopError // left default for this example
         // _config.slot0.maxIntegralAccumulator; // left default for this example
         // _config.slot0.closedLoopPeriod; // left default for this example
+        _master.configFactoryDefault();
         _master.configAllSettings(_config);
 
         /* pick the sensor phase and desired direction */
