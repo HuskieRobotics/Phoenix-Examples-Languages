@@ -236,26 +236,25 @@ public class Robot extends TimedRobot {
 
         // based on
         // https://v5.docs.ctr-electronics.com/en/stable/ch16_ClosedLoop.html#motion-profiling-closed-loop
-        BufferedTrajectoryPointStream stream = new BufferedTrajectoryPointStream();
         TrajectoryPoint point = new TrajectoryPoint();
 
         /* clear the buffer, in case it was used elsewhere */
         _bufferedStream.Clear();
 
         for (double t = 0; !profile.isFinished(t - LOOP_DT_MS / 1000.0); t += LOOP_DT_MS / 1000.0) {
-            double extensionPosition = profile.calculate(t).position;
-            double extensionVelocity = profile.calculate(t).velocity;
+            double rotationPosition = profile.calculate(t).position;
+            double rotationVelocity = profile.calculate(t).velocity;
 
             point.timeDur = LOOP_DT_MS;
-            point.position = extensionPosition;
-            point.velocity = extensionVelocity;
+            point.position = rotationPosition;
+            point.velocity = rotationVelocity;
             point.auxiliaryPos = 0;
             point.auxiliaryVel = 0;
             point.profileSlotSelect0 = Constants.kPrimaryPIDSlot; /* which set of gains would you like to use [0,3]? */
             point.profileSlotSelect1 = 0; /* auxiliary PID [0,1], leave zero */
             point.zeroPos = (t == 0); /* set this to true on the first point */
             point.isLastPoint = profile.isFinished(t); /* set this to true on the last point */
-            point.arbFeedFwd = calculateRotationFeedForward(extension, Units.degreesToRadians(rotation));
+            point.arbFeedFwd = calculateRotationFeedForward(extension, pigeonToRadians(rotationPosition));
 
             _bufferedStream.Write(point);
         }
