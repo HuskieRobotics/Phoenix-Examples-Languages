@@ -66,7 +66,7 @@ import edu.wpi.first.math.trajectory.TrapezoidProfile.State;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
-
+import edu.wpi.first.wpilibj.Timer;
 import frc.robot.sim.PhysicsSim;
 
 import static frc.robot.Constants.*;
@@ -225,7 +225,9 @@ public class Robot extends TimedRobot {
 
             /* fire the MP, and stop calling set() since that will cancel the MP */
             case 1:
+                double timestamp = Timer.getFPGATimestamp();
                 initBuffers(extensionSetpoint.get(), rotationSetpoint.get());
+                Instrum.printLine("buffer calculation: " + (Timer.getFPGATimestamp() - timestamp) + "s");
 
                 rotationTalon.startMotionProfile(rotationBufferedStream, 10,
                         TalonFXControlMode.MotionProfile.toControlMode());
@@ -306,9 +308,6 @@ public class Robot extends TimedRobot {
         } else {
             rotationTimeOffset = durationDifference;
         }
-
-        // FIXME: determine timeoffsets for each of rotation and extension; ensuring one
-        // equals 0 and the other is negative
 
         // based on
         // https://v5.docs.ctr-electronics.com/en/stable/ch16_ClosedLoop.html#motion-profiling-closed-loop
