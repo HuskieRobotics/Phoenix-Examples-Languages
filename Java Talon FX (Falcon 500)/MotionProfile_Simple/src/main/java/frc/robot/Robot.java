@@ -115,9 +115,6 @@ public class Robot extends TimedRobot {
     /** very simple state machine to prevent calling set() while firing MP. */
     int _state = 0;
 
-    int loopCount = 0;
-    double durationDifference = 0;
-
     /** a master talon, add followers if need be. */
     WPI_TalonFX rotationTalon = new WPI_TalonFX(19, "canbus1");
     WPI_TalonFX extensionTalon = new WPI_TalonFX(5, "canbus1");
@@ -227,52 +224,25 @@ public class Robot extends TimedRobot {
 
             /* fire the MP, and stop calling set() since that will cancel the MP */
             case 1:
-                double rotationDuration = initRotationBuffer(extensionSetpoint.get(), rotationSetpoint.get());
-                double extensionDuration = initExtensionBuffer(extensionSetpoint.get(), rotationSetpoint.get());
+                initBuffers(extensionSetpoint.get(), rotationSetpoint.get());
 
-                durationDifference = rotationDuration - extensionDuration - extensionRotationProfileDelta.get();
-                loopCount = 0;
-
-                if(durationDifference > 0) {
-                    // start rotation profile first
-                    rotationTalon.startMotionProfile(rotationBufferedStream, 10, TalonFXControlMode.MotionProfile.toControlMode());
-                }
-                else {
-                    // start extension profile first
-                    extensionTalon.startMotionProfile(extensionBufferedStream, 10, TalonFXControlMode.MotionProfile.toControlMode());
-                }
+                rotationTalon.startMotionProfile(rotationBufferedStream, 10, TalonFXControlMode.MotionProfile.toControlMode());
+                extensionTalon.startMotionProfile(extensionBufferedStream, 10, TalonFXControlMode.MotionProfile.toControlMode());
                 
                 _state = 2;
                 Instrum.printLine("MP started");
                 break;
 
-            /* wait to start second MP */
+            /* wait for MP to finish */
             case 2:
-                loopCount++;
-
-                if (loopCount * 20.0/1000.0 >= Math.abs(durationDifference)) {
-                    if(durationDifference > 0) {
-                        // start extension profile
-                        extensionTalon.startMotionProfile(extensionBufferedStream, 10, TalonFXControlMode.MotionProfile.toControlMode());
-                    }
-                    else {
-                        // start rotation profile
-                        rotationTalon.startMotionProfile(rotationBufferedStream, 10, TalonFXControlMode.MotionProfile.toControlMode());
-                    }
+                if (rotationTalon.isMotionProfileFinished() && extensionTalon.isMotionProfileFinished()) {
+                    Instrum.printLine("MP finished");
                     _state = 3;
                 }
                 break;
 
-            /* wait for MP to finish */
-            case 3:
-                if (rotationTalon.isMotionProfileFinished() && extensionTalon.isMotionProfileFinished()) {
-                    Instrum.printLine("MP finished");
-                    _state = 4;
-                }
-                break;
-
             /* MP is finished, nothing to do */
-            case 4:
+            case 3:
                 break;
         }
 
@@ -280,7 +250,7 @@ public class Robot extends TimedRobot {
         Instrum.loop(bPrintValues, rotationTalon, extensionTalon);
     }
 
-    public double initRotationBuffer(double extension, double rotation) {
+    public void initBuffers(double extension, double rotation) {
         // public static BufferedTrajectoryPointStream generateTrajectory(double
         // theta_0, double
         // theta_f, Constraints constraints) { //TODO: consider generating motion
@@ -292,15 +262,40 @@ public class Robot extends TimedRobot {
          * calculateMotorPosition() and calculateMotorVelocity such that the motion of
          * the arm matches this trajectory
          */
-        Constraints constraints = new Constraints(
+        Constraints rotationConstraints = new Constraints(
                 radiansToPigeon(Units.degreesToRadians(rotationMotionProfileExtensionCruiseVelocity.get())),
                 radiansToPigeon(Units.degreesToRadians(rotationMotionProfileAcceleration.get())));
-        TrapezoidProfile profile = new TrapezoidProfile(
-                constraints,
+        TrapezoidProfile rotationProfile = new TrapezoidProfile(
+            rotationConstraints,
                 new State(
                         radiansToPigeon(Units.degreesToRadians(rotation)),
                         0),
                 new State(rotationTalon.getSelectedSensorPosition(Constants.kPrimaryPIDSlot), 0));
+
+                Constraints extensionConstraints = new Constraints(
+                    mpsToFalconMotionMagicUnits(
+                            extensionMotionProfileExtensionCruiseVelocity.get(),
+                            EXTENSION_PULLEY_CIRCUMFERENCE,
+                            EXTENSION_GEAR_RATIO),
+                    mpsToFalconMotionMagicUnits(
+                            extensionMotionProfileAcceleration.get(),
+                            EXTENSION_PULLEY_CIRCUMFERENCE,
+                            EXTENSION_GEAR_RATIO));
+            TrapezoidProfile extensionProfile = new TrapezoidProfile(
+                extensionConstraints,
+                    new State(
+                            Conversions.metersToFalcon(
+                                    Units.inchesToMeters(extension), EXTENSION_PULLEY_CIRCUMFERENCE, EXTENSION_GEAR_RATIO),
+                            0),
+                    new State(extensionTalon.getSelectedSensorPosition(Constants.kPrimaryPIDSlot), 0));
+    
+
+        // subtract durationDifference to the time when generating the extension profile
+        double durationDifference = rotationProfile.totalTime() - extensionProfile.totalTime() - extensionRotationProfileDelta.get();
+
+        // FIXME: determine timeoffsets for each of rotation and extension; ensuring one equals 0 and the other is negative
+
+
 
         // based on
         // https://v5.docs.ctr-electronics.com/en/stable/ch16_ClosedLoop.html#motion-profiling-closed-loop
@@ -308,10 +303,15 @@ public class Robot extends TimedRobot {
 
         /* clear the buffer, in case it was used elsewhere */
         rotationBufferedStream.Clear();
+        extensionBufferedStream.Clear();
 
-        for (double t = 0; !profile.isFinished(t - LOOP_DT_MS / 1000.0); t += LOOP_DT_MS / 1000.0) {
-            double rotationPosition = profile.calculate(t).position;
-            double rotationVelocity = profile.calculate(t).velocity;
+        for (double t = 0; !rotationProfile.isFinished(t - LOOP_DT_MS / 1000.0) && !extensionProfile.isFinished(t - LOOP_DT_MS / 1000.0); t += LOOP_DT_MS / 1000.0) {
+            double rotationPosition = rotationProfile.calculate(t).position;
+            double rotationVelocity = rotationProfile.calculate(t).velocity;
+
+            double extensionPosition = extensionProfile.calculate(t).position;
+            double extensionVelocity = extensionProfile.calculate(t).velocity;
+
 
             point.timeDur = LOOP_DT_MS;
             point.position = rotationPosition;
@@ -321,13 +321,28 @@ public class Robot extends TimedRobot {
             point.profileSlotSelect0 = Constants.kPrimaryPIDSlot; /* which set of gains would you like to use [0,3]? */
             point.profileSlotSelect1 = 0; /* auxiliary PID [0,1], leave zero */
             point.zeroPos = (t == 0); /* set this to true on the first point */
-            point.isLastPoint = profile.isFinished(t); /* set this to true on the last point */
-            point.arbFeedFwd = calculateRotationFeedForward(extension, pigeonToRadians(rotationPosition));
+            point.isLastPoint = rotationProfile.isFinished(t); /* set this to true on the last point */
+            point.arbFeedFwd = calculateRotationFeedForward(Units.metersToInches(Conversions
+                    .falconToMeters(extensionPosition, EXTENSION_PULLEY_CIRCUMFERENCE, EXTENSION_GEAR_RATIO)), pigeonToRadians(rotationPosition));
 
             rotationBufferedStream.Write(point);
-        }
 
-        return profile.totalTime();
+            
+            point.timeDur = LOOP_DT_MS;
+            point.position = extensionPosition;
+            point.velocity = extensionVelocity;
+            point.auxiliaryPos = 0;
+            point.auxiliaryVel = 0;
+            point.profileSlotSelect0 = Constants.kPrimaryPIDSlot; /* which set of gains would you like to use [0,3]? */
+            point.profileSlotSelect1 = 0; /* auxiliary PID [0,1], leave zero */
+            point.zeroPos = (t == 0); /* set this to true on the first point */
+            point.isLastPoint = extensionProfile.isFinished(t); /* set this to true on the last point */
+            point.arbFeedFwd = calculateExtensionFeedForward(Units.metersToInches(Conversions
+                    .falconToMeters(extensionPosition, EXTENSION_PULLEY_CIRCUMFERENCE, EXTENSION_GEAR_RATIO)),
+                    pigeonToRadians(rotationPosition));
+
+            extensionBufferedStream.Write(point);
+        }
     }
 
     public double initExtensionBuffer(double extension, double rotation) {
@@ -342,23 +357,7 @@ public class Robot extends TimedRobot {
          * calculateMotorPosition() and calculateMotorVelocity such that the motion of
          * the arm matches this trajectory
          */
-        Constraints constraints = new Constraints(
-                mpsToFalconMotionMagicUnits(
-                        extensionMotionProfileExtensionCruiseVelocity.get(),
-                        EXTENSION_PULLEY_CIRCUMFERENCE,
-                        EXTENSION_GEAR_RATIO),
-                mpsToFalconMotionMagicUnits(
-                        extensionMotionProfileAcceleration.get(),
-                        EXTENSION_PULLEY_CIRCUMFERENCE,
-                        EXTENSION_GEAR_RATIO));
-        TrapezoidProfile profile = new TrapezoidProfile(
-                constraints,
-                new State(
-                        Conversions.metersToFalcon(
-                                Units.inchesToMeters(extension), EXTENSION_PULLEY_CIRCUMFERENCE, EXTENSION_GEAR_RATIO),
-                        0),
-                new State(extensionTalon.getSelectedSensorPosition(Constants.kPrimaryPIDSlot), 0));
-
+        
         // based on
         // https://v5.docs.ctr-electronics.com/en/stable/ch16_ClosedLoop.html#motion-profiling-closed-loop
         TrajectoryPoint point = new TrajectoryPoint();
@@ -366,9 +365,9 @@ public class Robot extends TimedRobot {
         /* clear the buffer, in case it was used elsewhere */
         extensionBufferedStream.Clear();
 
-        for (double t = 0; !profile.isFinished(t - LOOP_DT_MS / 1000.0); t += LOOP_DT_MS / 1000.0) {
-            double extensionPosition = profile.calculate(t).position;
-            double extensionVelocity = profile.calculate(t).velocity;
+        for (double t = 0; !extensionProfile.isFinished(t - LOOP_DT_MS / 1000.0); t += LOOP_DT_MS / 1000.0) {
+            double extensionPosition = extensionProfile.calculate(t).position;
+            double extensionVelocity = extensionProfile.calculate(t).velocity;
 
             point.timeDur = LOOP_DT_MS;
             point.position = extensionPosition;
@@ -378,7 +377,7 @@ public class Robot extends TimedRobot {
             point.profileSlotSelect0 = Constants.kPrimaryPIDSlot; /* which set of gains would you like to use [0,3]? */
             point.profileSlotSelect1 = 0; /* auxiliary PID [0,1], leave zero */
             point.zeroPos = (t == 0); /* set this to true on the first point */
-            point.isLastPoint = profile.isFinished(t); /* set this to true on the last point */
+            point.isLastPoint = extensionProfile.isFinished(t); /* set this to true on the last point */
             point.arbFeedFwd = calculateExtensionFeedForward(Units.metersToInches(Conversions
                     .falconToMeters(extensionPosition, EXTENSION_PULLEY_CIRCUMFERENCE, EXTENSION_GEAR_RATIO)),
                     Units.degreesToRadians(rotation));
