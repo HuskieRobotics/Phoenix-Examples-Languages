@@ -105,15 +105,18 @@ public class Robot extends TimedRobot {
             "ElevatorExtension/Setpoint(in)",
             44);
 
+            // positive values rotation finishes after the extension
+            // negative values: extension finishes after the rotation
     private final TunableNumber extensionRotationProfileDelta = new TunableNumber(
-                "Elevator/ProfileDelta(ms)",
-                100.0);
+                "Elevator/ProfileDelta(s)",
+                2.0);
 
 
     /** very simple state machine to prevent calling set() while firing MP. */
     int _state = 0;
 
     int loopCount = 0;
+    double durationDifference = 0;
 
     /** a master talon, add followers if need be. */
     WPI_TalonFX rotationTalon = new WPI_TalonFX(19, "canbus1");
@@ -224,26 +227,52 @@ public class Robot extends TimedRobot {
 
             /* fire the MP, and stop calling set() since that will cancel the MP */
             case 1:
-                initRotationBuffer(extensionSetpoint.get(), rotationSetpoint.get());
-                initExtensionBuffer(extensionSetpoint.get(), rotationSetpoint.get());
+                double rotationDuration = initRotationBuffer(extensionSetpoint.get(), rotationSetpoint.get());
+                double extensionDuration = initExtensionBuffer(extensionSetpoint.get(), rotationSetpoint.get());
+
+                durationDifference = rotationDuration - extensionDuration - extensionRotationProfileDelta.get();
+                loopCount = 0;
+
+                if(durationDifference > 0) {
+                    // start rotation profile first
+                    rotationTalon.startMotionProfile(rotationBufferedStream, 10, TalonFXControlMode.MotionProfile.toControlMode());
+                }
+                else {
+                    // start extension profile first
+                    extensionTalon.startMotionProfile(extensionBufferedStream, 10, TalonFXControlMode.MotionProfile.toControlMode());
+                }
                 
-                /* wait for 10 points to buffer in firmware, then transition to MP */
-                rotationTalon.startMotionProfile(rotationBufferedStream, 10, TalonFXControlMode.MotionProfile.toControlMode());
-                extensionTalon.startMotionProfile(extensionBufferedStream, 10, TalonFXControlMode.MotionProfile.toControlMode());
                 _state = 2;
                 Instrum.printLine("MP started");
                 break;
 
-            /* wait for MP to finish */
+            /* wait to start second MP */
             case 2:
-                if (rotationTalon.isMotionProfileFinished() && extensionTalon.isMotionProfileFinished()) {
-                    Instrum.printLine("MP finished");
+                loopCount++;
+
+                if (loopCount * 20.0/1000.0 >= Math.abs(durationDifference)) {
+                    if(durationDifference > 0) {
+                        // start extension profile
+                        extensionTalon.startMotionProfile(extensionBufferedStream, 10, TalonFXControlMode.MotionProfile.toControlMode());
+                    }
+                    else {
+                        // start rotation profile
+                        rotationTalon.startMotionProfile(rotationBufferedStream, 10, TalonFXControlMode.MotionProfile.toControlMode());
+                    }
                     _state = 3;
                 }
                 break;
 
-            /* MP is finished, nothing to do */
+            /* wait for MP to finish */
             case 3:
+                if (rotationTalon.isMotionProfileFinished() && extensionTalon.isMotionProfileFinished()) {
+                    Instrum.printLine("MP finished");
+                    _state = 4;
+                }
+                break;
+
+            /* MP is finished, nothing to do */
+            case 4:
                 break;
         }
 
@@ -251,7 +280,7 @@ public class Robot extends TimedRobot {
         Instrum.loop(bPrintValues, rotationTalon, extensionTalon);
     }
 
-    public void initRotationBuffer(double extension, double rotation) {
+    public double initRotationBuffer(double extension, double rotation) {
         // public static BufferedTrajectoryPointStream generateTrajectory(double
         // theta_0, double
         // theta_f, Constraints constraints) { //TODO: consider generating motion
@@ -293,13 +322,15 @@ public class Robot extends TimedRobot {
             point.profileSlotSelect1 = 0; /* auxiliary PID [0,1], leave zero */
             point.zeroPos = (t == 0); /* set this to true on the first point */
             point.isLastPoint = profile.isFinished(t); /* set this to true on the last point */
-            point.arbFeedFwd = calculateRotationFeedForward(extension, Units.degreesToRadians(rotation));
+            point.arbFeedFwd = calculateRotationFeedForward(extension, pigeonToRadians(rotationPosition));
 
             rotationBufferedStream.Write(point);
         }
+
+        return profile.totalTime();
     }
 
-    public void initExtensionBuffer(double extension, double rotation) {
+    public double initExtensionBuffer(double extension, double rotation) {
         // public static BufferedTrajectoryPointStream generateTrajectory(double
         // theta_0, double
         // theta_f, Constraints constraints) { //TODO: consider generating motion
@@ -348,10 +379,14 @@ public class Robot extends TimedRobot {
             point.profileSlotSelect1 = 0; /* auxiliary PID [0,1], leave zero */
             point.zeroPos = (t == 0); /* set this to true on the first point */
             point.isLastPoint = profile.isFinished(t); /* set this to true on the last point */
-            point.arbFeedFwd = calculateExtensionFeedForward(extension, Units.degreesToRadians(rotation));
+            point.arbFeedFwd = calculateExtensionFeedForward(Units.metersToInches(Conversions
+                    .falconToMeters(extensionPosition, EXTENSION_PULLEY_CIRCUMFERENCE, EXTENSION_GEAR_RATIO)),
+                    Units.degreesToRadians(rotation));
 
             extensionBufferedStream.Write(point);
         }
+
+        return profile.totalTime();
     }
 
     private static double mpsToFalconMotionMagicUnits(
