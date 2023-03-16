@@ -26,9 +26,9 @@ public class Constants {
 
 	public final static boolean TUNING_MODE = true;
 
-	public static final double ROTATION_MAX_ELEVATOR_EXTENSION_VELOCITY_DEGREES_PER_SECOND = 20;
-  public static final double ROTATION_MAX_ELEVATOR_RETRACTION_VELOCITY_DEGREES_PER_SECOND = 20;
-  public static final double ROTATION_ELEVATOR_ACCELERATION_DEGREES_PER_SECOND_PER_SECOND = 20;
+	public static final double ROTATION_MAX_ELEVATOR_EXTENSION_VELOCITY_DEGREES_PER_SECOND = 60;
+  public static final double ROTATION_MAX_ELEVATOR_RETRACTION_VELOCITY_DEGREES_PER_SECOND = 60;
+  public static final double ROTATION_ELEVATOR_ACCELERATION_DEGREES_PER_SECOND_PER_SECOND = 80;
 
   public static final double ROTATION_GEAR_RATIO = 20;
   public static final double ROTATION_DRUM_CIRCUMFERENCE = Units.inchesToMeters(2.0) * Math.PI;
