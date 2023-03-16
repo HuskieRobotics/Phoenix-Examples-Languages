@@ -69,6 +69,19 @@ public class Robot extends TimedRobot {
 
     private static final int LOOP_DT_MS = 10;
 
+    private final TunableNumber kP = new TunableNumber(
+            "ElevatorRotation/kP",
+            kGains_MotProf.kP);
+    private final TunableNumber kI = new TunableNumber(
+            "ElevatorRotation/kI",
+            kGains_MotProf.kI);
+    private final TunableNumber kD = new TunableNumber(
+            "ElevatorRotation/kD",
+            kGains_MotProf.kD);
+    private final TunableNumber kF = new TunableNumber(
+            "ElevatorRotation/kF",
+            kGains_MotProf.kF);
+
     private final TunableNumber rotationMotionProfileAcceleration = new TunableNumber(
             "ElevatorRotation/MPAcceleration",
             ROTATION_ELEVATOR_ACCELERATION_METERS_PER_SECOND_PER_SECOND);
@@ -82,7 +95,6 @@ public class Robot extends TimedRobot {
     private final TunableNumber rotationSetpoint = new TunableNumber(
             "ElevatorRotation/Setpoint(deg)",
             45);
-
 
     /** very simple state machine to prevent calling set() while firing MP. */
     int _state = 0;
@@ -98,21 +110,19 @@ public class Robot extends TimedRobot {
 
     /* talon configs */
     TalonFXConfiguration _config = new TalonFXConfiguration(); // factory default settings
-    
+
     /* quick and dirty plotter to smartdash */
     PlotThread _plotThread = new PlotThread(_master);
 
     public void simulationInit() {
         PhysicsSim.getInstance().addTalonFX(_master, 0.5, 6800);
     }
+
     public void simulationPeriodic() {
         PhysicsSim.getInstance().run();
     }
 
     public void robotInit() {
-        /* fill our buffer object with the excel points */
-        initBuffer(0, 20);
-
         /* _config the master specific settings */
         _config.primaryPID.selectedFeedbackSensor = TalonFXFeedbackDevice.IntegratedSensor.toFeedbackDevice();
         _config.neutralDeadband = Constants.kNeutralDeadband; /* 0.1 % super small for best low-speed control */
@@ -129,13 +139,15 @@ public class Robot extends TimedRobot {
 
         /* pick the sensor phase and desired direction */
         _master.setInverted(TalonFXInvertType.CounterClockwise);
-		/*
-		 * Talon FX does not need sensor phase set for its integrated sensor
-		 * This is because it will always be correct if the selected feedback device is integrated sensor (default value)
-		 * and the user calls getSelectedSensor* to get the sensor's position/velocity.
-		 * 
-		 * https://phoenix-documentation.readthedocs.io/en/latest/ch14_MCSensor.html#sensor-phase
-		 */
+        /*
+         * Talon FX does not need sensor phase set for its integrated sensor
+         * This is because it will always be correct if the selected feedback device is
+         * integrated sensor (default value)
+         * and the user calls getSelectedSensor* to get the sensor's position/velocity.
+         * 
+         * https://phoenix-documentation.readthedocs.io/en/latest/ch14_MCSensor.html#
+         * sensor-phase
+         */
         // _master.setSensorPhase(true);
     }
 
@@ -162,6 +174,14 @@ public class Robot extends TimedRobot {
 
             /* fire the MP, and stop calling set() since that will cancel the MP */
             case 1:
+                _master.config_kP(kPrimaryPIDSlot, kP.get());
+                _master.config_kI(kPrimaryPIDSlot, kI.get());
+                _master.config_kD(kPrimaryPIDSlot, kD.get());
+                _master.config_kF(kPrimaryPIDSlot, kF.get());
+
+                /* fill our buffer object with the excel points */
+                initBuffer(0, rotationSetpoint.get());
+
                 /* wait for 10 points to buffer in firmware, then transition to MP */
                 _master.startMotionProfile(_bufferedStream, 10, TalonFXControlMode.MotionProfile.toControlMode());
                 _state = 2;
@@ -198,11 +218,11 @@ public class Robot extends TimedRobot {
          * the arm matches this trajectory
          */
         Constraints constraints = new Constraints(
-                mpsToFalconMotionMagicUnits(
+                Conversions.metersToFalcon(
                         rotationMotionProfileExtensionCruiseVelocity.get(),
                         ROTATION_DRUM_CIRCUMFERENCE,
                         ROTATION_GEAR_RATIO),
-                mpsToFalconMotionMagicUnits(
+                Conversions.metersToFalcon(
                         rotationMotionProfileAcceleration.get(),
                         ROTATION_DRUM_CIRCUMFERENCE,
                         ROTATION_GEAR_RATIO));
@@ -215,7 +235,6 @@ public class Robot extends TimedRobot {
 
         // based on
         // https://v5.docs.ctr-electronics.com/en/stable/ch16_ClosedLoop.html#motion-profiling-closed-loop
-        BufferedTrajectoryPointStream stream = new BufferedTrajectoryPointStream();
         TrajectoryPoint point = new TrajectoryPoint();
 
         /* clear the buffer, in case it was used elsewhere */
@@ -227,7 +246,7 @@ public class Robot extends TimedRobot {
 
             point.timeDur = LOOP_DT_MS;
             point.position = extensionPosition;
-            point.velocity = extensionVelocity;
+            point.velocity = extensionVelocity / 10;
             point.auxiliaryPos = 0;
             point.auxiliaryVel = 0;
             point.profileSlotSelect0 = Constants.kPrimaryPIDSlot; /* which set of gains would you like to use [0,3]? */
@@ -238,13 +257,5 @@ public class Robot extends TimedRobot {
 
             _bufferedStream.Write(point);
         }
-    }
-
-    private static double mpsToFalconMotionMagicUnits(
-            double mps, double circumference, double gearRatio) {
-        double pulleyRotationsPerSecond = mps / circumference;
-        double motorRotationsPerSecond = pulleyRotationsPerSecond * gearRatio;
-        double ticksPerSecond = motorRotationsPerSecond * 2048.0;
-        return ticksPerSecond / 10.0; // per 100 ms
     }
 }
