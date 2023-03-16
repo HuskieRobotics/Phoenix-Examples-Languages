@@ -76,23 +76,23 @@ public class Robot extends TimedRobot {
     private static final int LOOP_DT_MS = 10;
 
     private final TunableNumber rotationMotionProfileAcceleration = new TunableNumber(
-            "ElevatorRotation/MPAcceleration(deg/sec/sec)",
+            "ElevatorRotation/MPAcceleration(degpsps)",
             ROTATION_ELEVATOR_ACCELERATION_DEGREES_PER_SECOND_PER_SECOND);
     private final TunableNumber rotationMotionProfileExtensionCruiseVelocity = new TunableNumber(
-            "ElevatorRotation/MPExtensionVelocity(deg/s)",
+            "ElevatorRotation/MPExtensionVelocity(degps)",
             ROTATION_MAX_ELEVATOR_EXTENSION_VELOCITY_DEGREES_PER_SECOND);
     private final TunableNumber rotationMotionProfileRetractionCruiseVelocity = new TunableNumber(
-            "ElevatorRotation/MPRetractionVelocity(deg/s)",
+            "ElevatorRotation/MPRetractionVelocity(degps)",
             ROTATION_MAX_ELEVATOR_RETRACTION_VELOCITY_DEGREES_PER_SECOND);
 
     private final TunableNumber extensionMotionProfileAcceleration = new TunableNumber(
-            "ElevatorExtension/MPAcceleration(m/s/s)",
+            "ElevatorExtension/MPAcceleration(mpsps)",
             EXTENSION_ELEVATOR_ACCELERATION_METERS_PER_SECOND_PER_SECOND);
     private final TunableNumber extensionMotionProfileExtensionCruiseVelocity = new TunableNumber(
-            "ElevatorExtension/MPExtensionVelocity(m/s)",
+            "ElevatorExtension/MPExtensionVelocity(mps)",
             EXTENSION_MAX_ELEVATOR_EXTENSION_VELOCITY_METERS_PER_SECOND);
     private final TunableNumber extensionMotionProfileRetractionCruiseVelocity = new TunableNumber(
-            "ElevatorExtension/MPRetractionVelocity(m/s)",
+            "ElevatorExtension/MPRetractionVelocity(mps)",
             EXTENSION_MAX_ELEVATOR_RETRACTION_VELOCITY_METERS_PER_SECOND);
 
     private final TunableNumber rotationSetpoint = new TunableNumber(
@@ -279,11 +279,11 @@ public class Robot extends TimedRobot {
                 rotationStartState);
 
         Constraints extensionConstraints = new Constraints(
-                mpsToFalconMotionMagicUnits(
+                Conversions.metersToFalcon(
                         extensionMotionProfileExtensionCruiseVelocity.get(),
                         EXTENSION_PULLEY_CIRCUMFERENCE,
                         EXTENSION_GEAR_RATIO),
-                mpsToFalconMotionMagicUnits(
+                Conversions.metersToFalcon(
                         extensionMotionProfileAcceleration.get(),
                         EXTENSION_PULLEY_CIRCUMFERENCE,
                         EXTENSION_GEAR_RATIO));
@@ -322,14 +322,15 @@ public class Robot extends TimedRobot {
                         / 1000.0) {
 
             boolean lastPoint = rotationProfile.isFinished(t + rotationTimeOffset)
-                && extensionProfile.isFinished(t + extensionTimeOffset);
+                    && extensionProfile.isFinished(t + extensionTimeOffset);
 
             double rotationPosition;
             double rotationVelocity;
             double extensionPosition;
             double extensionVelocity;
 
-            // we may invoke calculate after the end of the profile; if we do, it just returns the goal state
+            // we may invoke calculate after the end of the profile; if we do, it just
+            // returns the goal state
             if (t + rotationTimeOffset >= 0) {
                 rotationPosition = rotationProfile.calculate(t).position;
                 rotationVelocity = rotationProfile.calculate(t).velocity;
@@ -348,7 +349,7 @@ public class Robot extends TimedRobot {
 
             point.timeDur = LOOP_DT_MS;
             point.position = rotationPosition;
-            point.velocity = rotationVelocity;
+            point.velocity = rotationVelocity / 10;
             point.auxiliaryPos = 0;
             point.auxiliaryVel = 0;
             point.profileSlotSelect0 = Constants.kPrimaryPIDSlot; /* which set of gains would you like to use [0,3]? */
@@ -363,7 +364,7 @@ public class Robot extends TimedRobot {
 
             point.timeDur = LOOP_DT_MS;
             point.position = extensionPosition;
-            point.velocity = extensionVelocity;
+            point.velocity = extensionVelocity / 10;
             point.auxiliaryPos = 0;
             point.auxiliaryVel = 0;
             point.profileSlotSelect0 = Constants.kPrimaryPIDSlot; /* which set of gains would you like to use [0,3]? */
@@ -376,14 +377,6 @@ public class Robot extends TimedRobot {
 
             extensionBufferedStream.Write(point);
         }
-    }
-
-    private static double mpsToFalconMotionMagicUnits(
-            double mps, double circumference, double gearRatio) {
-        double pulleyRotationsPerSecond = mps / circumference;
-        double motorRotationsPerSecond = pulleyRotationsPerSecond * gearRatio;
-        double ticksPerSecond = motorRotationsPerSecond * 2048.0;
-        return ticksPerSecond / 10.0; // per 100 ms
     }
 
     private double pigeonToRadians(double counts) {
