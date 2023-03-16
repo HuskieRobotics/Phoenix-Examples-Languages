@@ -233,6 +233,7 @@ public class Robot extends TimedRobot {
             point.timeDur = LOOP_DT_MS;
             point.position = extensionPosition;
             point.velocity = extensionVelocity;
+            System.out.println("pos: " + point.position + "; vel: " + point.velocity);
             point.auxiliaryPos = 0;
             point.auxiliaryVel = 0;
             point.profileSlotSelect0 = Constants.kPrimaryPIDSlot; /* which set of gains would you like to use [0,3]? */
