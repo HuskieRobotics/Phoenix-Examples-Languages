@@ -95,7 +95,7 @@ public class Robot extends TimedRobot {
 
     private final TunableNumber rotationSetpoint = new TunableNumber(
             "ElevatorRotation/Setpoint(deg)",
-            45);
+            0.5);
 
     /** very simple state machine to prevent calling set() while firing MP. */
     int _state = 0;
@@ -232,7 +232,8 @@ public class Robot extends TimedRobot {
         TrapezoidProfile profile = new TrapezoidProfile(
                 constraints,
                 new State(
-                        rotation,
+                        Conversions.metersToFalcon(rotation, ROTATION_DRUM_CIRCUMFERENCE,
+                        ROTATION_GEAR_RATIO),
                         0),
                 new State(_master.getSelectedSensorPosition(Constants.kPrimaryPIDSlot), 0));
 
