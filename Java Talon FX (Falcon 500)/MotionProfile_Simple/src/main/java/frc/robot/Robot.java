@@ -70,6 +70,19 @@ public class Robot extends TimedRobot {
 
     private static final int LOOP_DT_MS = 10;
 
+    private final TunableNumber kP = new TunableNumber(
+            "ElevatorExtension/kP",
+            kGains_MotProf.kP);
+    private final TunableNumber kI = new TunableNumber(
+            "ElevatorExtension/kI",
+            kGains_MotProf.kI);
+    private final TunableNumber kD = new TunableNumber(
+            "ElevatorExtension/kD",
+            kGains_MotProf.kD);
+    private final TunableNumber kF = new TunableNumber(
+            "ElevatorExtension/kF",
+            kGains_MotProf.kF);
+
     private final TunableNumber extensionMotionProfileAcceleration = new TunableNumber(
             "ElevatorExtension/MPAcceleration(mperspers)",
             EXTENSION_ELEVATOR_ACCELERATION_METERS_PER_SECOND_PER_SECOND);
@@ -163,6 +176,10 @@ public class Robot extends TimedRobot {
 
             /* fire the MP, and stop calling set() since that will cancel the MP */
             case 1:
+                _master.config_kP(kPrimaryPIDSlot, kP.get());
+                _master.config_kI(kPrimaryPIDSlot, kI.get());
+                _master.config_kD(kPrimaryPIDSlot, kD.get());
+                _master.config_kF(kPrimaryPIDSlot, kF.get());
                 /* fill our buffer object with the excel points */
                 initBuffer(extensionSetpoint.get(), 66.0);
 
@@ -202,11 +219,11 @@ public class Robot extends TimedRobot {
          * the arm matches this trajectory
          */
         Constraints constraints = new Constraints(
-                    Conversions.metersToFalcon(
+                Conversions.metersToFalcon(
                         extensionMotionProfileExtensionCruiseVelocity.get(),
                         EXTENSION_PULLEY_CIRCUMFERENCE,
                         EXTENSION_GEAR_RATIO),
-                    Conversions.metersToFalcon(
+                Conversions.metersToFalcon(
                         extensionMotionProfileAcceleration.get(),
                         EXTENSION_PULLEY_CIRCUMFERENCE,
                         EXTENSION_GEAR_RATIO));
