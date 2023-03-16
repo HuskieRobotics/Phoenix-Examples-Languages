@@ -65,7 +65,6 @@ import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
 
 import frc.robot.sim.PhysicsSim;
-import frc.robot.Conversions;
 
 public class Robot extends TimedRobot {
 
@@ -203,11 +202,11 @@ public class Robot extends TimedRobot {
          * the arm matches this trajectory
          */
         Constraints constraints = new Constraints(
-                mpsToFalconMotionMagicUnits(
+                    Conversions.metersToFalcon(
                         extensionMotionProfileExtensionCruiseVelocity.get(),
                         EXTENSION_PULLEY_CIRCUMFERENCE,
                         EXTENSION_GEAR_RATIO),
-                mpsToFalconMotionMagicUnits(
+                    Conversions.metersToFalcon(
                         extensionMotionProfileAcceleration.get(),
                         EXTENSION_PULLEY_CIRCUMFERENCE,
                         EXTENSION_GEAR_RATIO));
@@ -232,7 +231,7 @@ public class Robot extends TimedRobot {
 
             point.timeDur = LOOP_DT_MS;
             point.position = extensionPosition;
-            point.velocity = extensionVelocity;
+            point.velocity = extensionVelocity / 10;
             point.auxiliaryPos = 0;
             point.auxiliaryVel = 0;
             point.profileSlotSelect0 = Constants.kPrimaryPIDSlot; /* which set of gains would you like to use [0,3]? */
@@ -245,14 +244,6 @@ public class Robot extends TimedRobot {
 
             _bufferedStream.Write(point);
         }
-    }
-
-    private static double mpsToFalconMotionMagicUnits(
-            double mps, double circumference, double gearRatio) {
-        double pulleyRotationsPerSecond = mps / circumference;
-        double motorRotationsPerSecond = pulleyRotationsPerSecond * gearRatio;
-        double ticksPerSecond = motorRotationsPerSecond * 2048.0;
-        return ticksPerSecond / 10.0; // per 100 ms
     }
 
     private static final double D1 = 39.8;
