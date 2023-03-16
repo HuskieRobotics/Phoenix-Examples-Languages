@@ -48,6 +48,7 @@
  */
 package frc.robot;
 
+import com.ctre.phoenix.motorcontrol.NeutralMode;
 import com.ctre.phoenix.motorcontrol.TalonFXControlMode;
 import com.ctre.phoenix.motorcontrol.TalonFXFeedbackDevice;
 import com.ctre.phoenix.motorcontrol.TalonFXInvertType;
@@ -102,6 +103,7 @@ public class Robot extends TimedRobot {
 
     /** a master talon, add followers if need be. */
     WPI_TalonFX _master = new WPI_TalonFX(5, "canbus1");
+    WPI_TalonFX rotation = new WPI_TalonFX(19,"canbus1");
 
     /** gamepad for control */
     Joystick _joy = new Joystick(0);
@@ -138,6 +140,11 @@ public class Robot extends TimedRobot {
         // _config.slot0.closedLoopPeriod; // left default for this example
         _master.configFactoryDefault();
         _master.configAllSettings(_config);
+
+        _master.setSelectedSensorPosition(0.0);
+
+        //rotation.configFactoryDefault();
+        rotation.setNeutralMode(NeutralMode.Brake);
 
         /* pick the sensor phase and desired direction */
         _master.setInverted(TalonFXInvertType.CounterClockwise);
