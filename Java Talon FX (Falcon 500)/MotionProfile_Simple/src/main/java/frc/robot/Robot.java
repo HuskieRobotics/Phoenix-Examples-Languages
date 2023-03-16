@@ -84,13 +84,13 @@ public class Robot extends TimedRobot {
             kGains_MotProf.kF);
 
     private final TunableNumber extensionMotionProfileAcceleration = new TunableNumber(
-            "ElevatorExtension/MPAcceleration(mperspers)",
+            "ElevatorExtension/MPAcceleration(mpsps)",
             EXTENSION_ELEVATOR_ACCELERATION_METERS_PER_SECOND_PER_SECOND);
     private final TunableNumber extensionMotionProfileExtensionCruiseVelocity = new TunableNumber(
-            "ElevatorExtension/MPExtensionVelocity(mpers)",
+            "ElevatorExtension/MPExtensionVelocity(mps)",
             EXTENSION_MAX_ELEVATOR_EXTENSION_VELOCITY_METERS_PER_SECOND);
     private final TunableNumber extensionMotionProfileRetractionCruiseVelocity = new TunableNumber(
-            "ElevatorExtension/MPRetractionVelocity(mpers)",
+            "ElevatorExtension/MPRetractionVelocity(mps)",
             EXTENSION_MAX_ELEVATOR_RETRACTION_VELOCITY_METERS_PER_SECOND);
 
     private final TunableNumber extensionSetpoint = new TunableNumber(
