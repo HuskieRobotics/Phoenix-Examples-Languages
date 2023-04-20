@@ -107,7 +107,7 @@ public class Robot extends TimedRobot {
     // negative values: extension finishes after the rotation
     private final TunableNumber extensionRotationProfileDelta = new TunableNumber(
             "Elevator/ProfileDelta(s)",
-            2.0);
+            0);
 
     /** very simple state machine to prevent calling set() while firing MP. */
     int _state = 0;
