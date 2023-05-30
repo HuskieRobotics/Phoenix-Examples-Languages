@@ -1,6 +1,6 @@
 package frc.robot;			
 public class MotionProfile {			
-	public static final int kNumPoints =224;		
+	public static final int kNumPoints =20;		
 	// Position (native)	Velocity (native)	Duration (ms)
 	public static double [][]Points = new double[][]{		
 		{0, 0, 10},
