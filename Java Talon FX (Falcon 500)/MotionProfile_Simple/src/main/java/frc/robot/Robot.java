@@ -197,7 +197,7 @@ public class Robot extends TimedRobot {
             point.auxiliaryVel = 0;
             point.profileSlotSelect0 = Constants.kPrimaryPIDSlot; /* which set of gains would you like to use [0,3]? */
             point.profileSlotSelect1 = 0; /* auxiliary PID [0,1], leave zero */
-            point.zeroPos = (i == 0); /* set this to true on the first point */
+            point.zeroPos = false;
             point.isLastPoint = ((i + 1) == totalCnt); /* set this to true on the last point */
             point.arbFeedFwd = 0; /* you can add a constant offset to add to PID[0] output here */
 
