@@ -183,16 +183,14 @@ public class Robot extends TimedRobot {
         for (int i = 0; i < totalCnt; ++i) {
 
             double direction = forward ? +1 : -1;
-            double positionRot = profile[i][0];
-            double velocityRPM = profile[i][1];
+            double positionNative = profile[i][0];
+            double velocityNative = profile[i][1];
             int durationMilliseconds = (int) profile[i][2];
 
             /* for each point, fill our structure and pass it to API */
             point.timeDur = durationMilliseconds;
-            point.position = direction * positionRot * Constants.kSensorUnitsPerRotation; // Convert Revolutions to
-                                                                                          // Units
-            point.velocity = direction * velocityRPM * Constants.kSensorUnitsPerRotation / 600.0; // Convert RPM to
-                                                                                                  // Units/100ms
+            point.position = direction * positionNative;
+            point.velocity = direction * velocityNative;
             point.auxiliaryPos = 0;
             point.auxiliaryVel = 0;
             point.profileSlotSelect0 = Constants.kPrimaryPIDSlot; /* which set of gains would you like to use [0,3]? */
